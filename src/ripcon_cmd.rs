@@ -38,8 +38,7 @@ fn main() {
         }
     };
 
-    let ih = Ipcon::new("", None).expect("failed to create handler");
-
+    let ih = Ipcon::new(None, None).expect("failed to create ipcon handler");
     if let Err(e) = ih.send_unicast_msg(&pname, Bytes::from(msg)) {
         error!(e);
     }
