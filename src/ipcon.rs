@@ -55,6 +55,9 @@ pub enum IpconFlag {
 }
 
 impl Ipcon {
+    pub const IpconKernelName: &'static str = "ipcon";
+    pub const IpconKernelGroupName: &'static str = "ipcon_kevent";
+
     fn valid_name(peer_name: &str) -> bool {
         if peer_name.is_empty() {
             return false;

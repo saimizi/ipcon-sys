@@ -41,20 +41,20 @@ pub struct IpconKevent {
     pub u: IpconKeventUnion,
 }
 
-impl fmt::Display for IpconKevent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl IpconKevent {
+    pub fn get_string(&self) -> String {
         match self.ke_type {
             IpconKeventTypePeerAdd => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
                     .to_str()
                     .unwrap_or("invalid");
-                writeln!(f, "peer {} added", peer_name)?;
+                format!("peer {} added", peer_name)
             },
             IpconKeventTypePeerRemove => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
                     .to_str()
                     .unwrap_or("invalid");
-                writeln!(f, "peer {} removed", peer_name)?;
+                format!("peer {} removed", peer_name)
             },
             IpconKeventTypeGroupAdd => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
@@ -63,7 +63,7 @@ impl fmt::Display for IpconKevent {
                 let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
                     .to_str()
                     .unwrap_or("invalid");
-                writeln!(f, "group {}@{} added", group_name, peer_name)?;
+                format!("group {}@{} added", group_name, peer_name)
             },
 
             IpconKeventTypeGroupRemove => unsafe {
@@ -73,12 +73,16 @@ impl fmt::Display for IpconKevent {
                 let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
                     .to_str()
                     .unwrap_or("invalid");
-                writeln!(f, "group {}@{} removed", group_name, peer_name)?;
+                format!("group {}@{} removed", group_name, peer_name)
             },
-            _ => panic!("Invalid kevent type"),
+            _ => format!("Invalid kevent type"),
         }
+    }
+}
 
-        Ok(())
+impl fmt::Display for IpconKevent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.get_string())
     }
 }
 
