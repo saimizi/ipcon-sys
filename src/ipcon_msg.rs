@@ -1,18 +1,18 @@
+use crate::debug;
 use crate::{error_str_result, Result};
 use bytes::{Bytes, BytesMut};
 use std::ffi::CStr;
+use std::fmt;
+use std::os::raw::c_char;
 
 pub const IPCON_MAX_PAYLOAD_LEN: usize = 2048;
 pub const IPCON_MAX_NAME_LEN: usize = 32;
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub enum IpconKeventType {
-    IpconEventPeerAdd,
-    IpconEventPeerRemove,
-    IpconEventGroupAdd,
-    IpconEventGroupRemove,
-}
+pub type IpconKeventType = std::os::raw::c_int;
+pub const IpconKeventTypePeerAdd: IpconMsgType = 0;
+pub const IpconKeventTypePeerRemove: IpconMsgType = 1;
+pub const IpconKeventTypeGroupAdd: IpconMsgType = 2;
+pub const IpconKeventTypeGroupRemove: IpconMsgType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -25,7 +25,6 @@ pub struct IpconKeventGroup {
 #[derive(Clone, Copy)]
 pub struct IpconKeventPeer {
     pub peer_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
-    pub group_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
 }
 
 #[repr(C)]
@@ -42,14 +41,52 @@ pub struct IpconKevent {
     pub u: IpconKeventUnion,
 }
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub enum IpconMsgType {
-    IpconNormalMsg,
-    IpconGroupMsg,
-    IpconKeventMsg,
-    IpconInvalidMsg,
+impl fmt::Display for IpconKevent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.ke_type {
+            IpconKeventTypePeerAdd => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                writeln!(f, "peer {} added", peer_name)?;
+            },
+            IpconKeventTypePeerRemove => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                writeln!(f, "peer {} removed", peer_name)?;
+            },
+            IpconKeventTypeGroupAdd => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                writeln!(f, "group {}@{} added", group_name, peer_name)?;
+            },
+
+            IpconKeventTypeGroupRemove => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid");
+                writeln!(f, "group {}@{} removed", group_name, peer_name)?;
+            },
+            _ => panic!("Invalid kevent type"),
+        }
+
+        Ok(())
+    }
 }
+
+pub type IpconMsgType = std::os::raw::c_int;
+pub const IpconMsgTypeNormal: IpconMsgType = 0;
+pub const IpconMsgTypeGroup: IpconMsgType = 1;
+pub const IpconMsgTypeKevent: IpconMsgType = 2;
+pub const IpconMsgTypeInvalid: IpconMsgType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -62,8 +99,8 @@ pub union IpconMsgUion {
 #[derive(Clone, Copy)]
 pub struct LibIpconMsg {
     msg_type: IpconMsgType,
-    pub peer: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
-    pub group: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
+    pub group: [c_char; IPCON_MAX_NAME_LEN],
+    pub peer: [c_char; IPCON_MAX_NAME_LEN],
     len: u32,
     u: IpconMsgUion,
 }
@@ -71,7 +108,7 @@ pub struct LibIpconMsg {
 impl LibIpconMsg {
     pub fn new() -> LibIpconMsg {
         LibIpconMsg {
-            msg_type: IpconMsgType::IpconInvalidMsg,
+            msg_type: IpconMsgTypeInvalid,
             peer: [0; IPCON_MAX_NAME_LEN],
             group: [0; IPCON_MAX_NAME_LEN],
             len: 0,
@@ -98,14 +135,14 @@ pub enum IpconMsg {
 impl IpconMsg {
     pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<'static, IpconMsg> {
         match msg.msg_type {
-            IpconMsgType::IpconNormalMsg => {
+            IpconMsgTypeNormal => {
                 let peer_name: String;
 
                 unsafe {
                     peer_name = match CStr::from_ptr(&msg.peer as *const i8).to_str() {
                         Ok(p) => String::from(p),
-                        Err(_) => return error_str_result("Invalid message"),
-                    }
+                        Err(_) => return error_str_result("Invalid peer name"),
+                    };
                 }
 
                 let buf: BytesMut;
@@ -123,7 +160,7 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            IpconMsgType::IpconGroupMsg => {
+            IpconMsgTypeGroup => {
                 let peer_name: String;
                 let group_name: String;
 
@@ -153,11 +190,10 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            IpconMsgType::IpconKeventMsg => unsafe {
-                Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone()))
-            },
+            IpconMsgTypeKevent => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone())) },
 
-            IpconMsgType::IpconInvalidMsg => Ok(IpconMsg::IpconMsgInvalid),
+            IpconMsgTypeInvalid => Ok(IpconMsg::IpconMsgInvalid),
+            _ => Ok(IpconMsg::IpconMsgInvalid),
         }
     }
 }
