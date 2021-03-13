@@ -45,32 +45,32 @@ impl IpconKevent {
     pub fn get_string(&self) -> String {
         match self.ke_type {
             IpconKeventTypePeerAdd => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("peer {} added", peer_name)
             },
             IpconKeventTypePeerRemove => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("peer {} removed", peer_name)
             },
             IpconKeventTypeGroupAdd => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
-                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("group {}@{} added", group_name, peer_name)
             },
 
             IpconKeventTypeGroupRemove => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
-                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("group {}@{} removed", group_name, peer_name)
