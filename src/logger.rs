@@ -155,50 +155,15 @@ macro_rules! debug {
 
 #[macro_export]
 macro_rules! info{
-    () => {
-        log::info!(
-            "{}@{}-{} : arrived.",
-            std::env::current_exe()
-                .unwrap()
-                .to_str()
-                .unwrap_or("undef")
-                .split('/')
-                .last()
-                .unwrap_or("undef")
-                .to_string(),
-            file!(),
-            line!(),
-        );
-    };
     ($val:tt) => {
         log::info!(
-            "{}@{}-{} : {}",
-            std::env::current_exe()
-                .unwrap()
-                .to_str()
-                .unwrap_or("undef")
-                .split('/')
-                .last()
-                .unwrap_or("undef")
-                .to_string(),
-            file!(),
-            line!(),
+            "{}",
             $val
         );
     };
     ($fmt:expr,$($val:expr),*) => {{
         log::info!(
-            "{}@{}-{} : {}",
-            std::env::current_exe()
-                .unwrap()
-                .to_str()
-                .unwrap_or("undef")
-                .split('/')
-                .last()
-                .unwrap_or("undef")
-                .to_string(),
-            file!(),
-            line!(),
+            "{}",
             format!($fmt, $($val),*)
         );
     }};
@@ -208,6 +173,8 @@ pub fn env_log_init() {
     env_logger::builder()
         .format(|buf, record| {
             use env_logger::fmt::Color;
+            use std::time::SystemTime;
+
             let mut level_style = buf.style();
 
             if record.level().to_string().eq("ERROR") {
@@ -226,9 +193,16 @@ pub fn env_log_init() {
                 level_style.set_color(Color::Green).set_bold(false);
             }
 
+            let nanos = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Wrong Time")
+                .as_nanos();
+
             writeln!(
                 buf,
-                "[{:5}] {}",
+                "{}.{:0>9} [{:5}] {}",
+                nanos / 1000000000,
+                nanos % 1000000000,
                 level_style.value(record.level()),
                 record.args()
             )
