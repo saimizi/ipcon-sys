@@ -1,5 +1,6 @@
 extern crate ipcon_sys;
 use bytes::Bytes;
+use scheduler;
 use std::env;
 use std::process::exit;
 
@@ -34,6 +35,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     env_log_init();
+
+    scheduler::set_self_policy(scheduler::Policy::Fifo, 1);
 
     opts.optopt("j", "join-group", "Join a string group.", "");
 
