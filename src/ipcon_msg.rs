@@ -9,10 +9,10 @@ pub const IPCON_MAX_PAYLOAD_LEN: usize = 2048;
 pub const IPCON_MAX_NAME_LEN: usize = 32;
 
 pub type IpconKeventType = std::os::raw::c_int;
-pub const IpconKeventTypePeerAdd: IpconMsgType = 0;
-pub const IpconKeventTypePeerRemove: IpconMsgType = 1;
-pub const IpconKeventTypeGroupAdd: IpconMsgType = 2;
-pub const IpconKeventTypeGroupRemove: IpconMsgType = 3;
+pub const IpconKeventTypePeerAdd: IpconKeventType = 0;
+pub const IpconKeventTypePeerRemove: IpconKeventType = 1;
+pub const IpconKeventTypeGroupAdd: IpconKeventType = 2;
+pub const IpconKeventTypeGroupRemove: IpconKeventType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -86,11 +86,11 @@ impl fmt::Display for IpconKevent {
     }
 }
 
-pub type IpconMsgType = std::os::raw::c_int;
-pub const IpconMsgTypeNormal: IpconMsgType = 0;
-pub const IpconMsgTypeGroup: IpconMsgType = 1;
-pub const IpconMsgTypeKevent: IpconMsgType = 2;
-pub const IpconMsgTypeInvalid: IpconMsgType = 3;
+pub type LibIpconMsgType = std::os::raw::c_int;
+pub const LibIpconMsgTypeNormal: LibIpconMsgType = 0;
+pub const LibIpconMsgTypeGroup: LibIpconMsgType = 1;
+pub const LibIpconMsgTypeKevent: LibIpconMsgType = 2;
+pub const LibIpconMsgTypeInvalid: LibIpconMsgType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -102,7 +102,7 @@ pub union IpconMsgUion {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct LibIpconMsg {
-    msg_type: IpconMsgType,
+    msg_type: LibIpconMsgType,
     pub group: [c_char; IPCON_MAX_NAME_LEN],
     pub peer: [c_char; IPCON_MAX_NAME_LEN],
     len: u32,
@@ -112,7 +112,7 @@ pub struct LibIpconMsg {
 impl LibIpconMsg {
     pub fn new() -> LibIpconMsg {
         LibIpconMsg {
-            msg_type: IpconMsgTypeInvalid,
+            msg_type: LibIpconMsgTypeInvalid,
             peer: [0; IPCON_MAX_NAME_LEN],
             group: [0; IPCON_MAX_NAME_LEN],
             len: 0,
@@ -121,6 +121,14 @@ impl LibIpconMsg {
             },
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum IpconMsgType {
+    IpconMsgTypeNormal,
+    IpconMsgTypeGroup,
+    IpconMsgTypeKevent,
+    IpconMsgTypeInvalid,
 }
 
 pub struct IpconMsgBody {
@@ -139,7 +147,7 @@ pub enum IpconMsg {
 impl IpconMsg {
     pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<'static, IpconMsg> {
         match msg.msg_type {
-            IpconMsgTypeNormal => {
+            LibIpconMsgTypeNormal => {
                 let peer_name: String;
 
                 unsafe {
@@ -155,7 +163,7 @@ impl IpconMsg {
                 }
 
                 let m = IpconMsgBody {
-                    msg_type: msg.msg_type,
+                    msg_type: IpconMsgType::IpconMsgTypeNormal,
                     peer: peer_name,
                     group: None,
                     buf: Bytes::from(buf),
@@ -164,7 +172,7 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            IpconMsgTypeGroup => {
+            LibIpconMsgTypeGroup => {
                 let peer_name: String;
                 let group_name: String;
 
@@ -186,7 +194,7 @@ impl IpconMsg {
                 }
 
                 let m = IpconMsgBody {
-                    msg_type: msg.msg_type,
+                    msg_type: IpconMsgType::IpconMsgTypeGroup,
                     peer: peer_name,
                     group: Some(group_name),
                     buf: Bytes::from(buf),
@@ -194,9 +202,9 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            IpconMsgTypeKevent => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone())) },
+            LibIpconMsgTypeKevent => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone())) },
 
-            IpconMsgTypeInvalid => Ok(IpconMsg::IpconMsgInvalid),
+            LibIpconMsgTypeInvalid => Ok(IpconMsg::IpconMsgInvalid),
             _ => Ok(IpconMsg::IpconMsgInvalid),
         }
     }

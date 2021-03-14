@@ -214,6 +214,10 @@ pub fn env_log_init() {
                 level_style.set_color(Color::Red).set_bold(true);
             }
 
+            if record.level().to_string().eq("WARN") {
+                level_style.set_color(Color::Cyan).set_bold(false);
+            }
+
             if record.level().to_string().eq("INFO") {
                 level_style.set_color(Color::Blue).set_bold(false);
             }
