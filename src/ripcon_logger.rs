@@ -17,10 +17,17 @@ fn do_user_msg(msg: IpconMsgBody) {
     debug!("do_user_msg: msg.msg_type: {:?}", msg.msg_type);
     match msg.msg_type {
         IpconMsgType::IpconMsgTypeNormal => {
-            info!("{}: {}", msg.peer, content);
+            let lines = content.split("\n");
+
+            for l in lines {
+                info!("{}: {}", msg.peer, l);
+            }
         }
         IpconMsgType::IpconMsgTypeGroup => {
-            info!("{}@{}: {}", group, msg.peer, content);
+            let lines = content.split("\n");
+            for l in lines {
+                info!("{}@{}: {}", group, msg.peer, l);
+            }
         }
         _ => (),
     }
