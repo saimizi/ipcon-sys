@@ -17,8 +17,8 @@ pub const IpconKeventTypeGroupRemove: IpconKeventType = 3;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct IpconKeventGroup {
-    pub peer_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
     pub group_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
+    pub peer_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
 }
 
 #[repr(C)]
