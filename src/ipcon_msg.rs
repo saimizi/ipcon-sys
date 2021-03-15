@@ -78,6 +78,68 @@ impl IpconKevent {
             _ => format!("Invalid kevent type"),
         }
     }
+
+    pub fn peer_added(&self) -> Option<String> {
+        match self.ke_type {
+            IpconKeventTypePeerAdd => unsafe {
+                Some(
+                    CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                        .to_str()
+                        .unwrap_or("invalid")
+                        .to_string(),
+                )
+            },
+            _ => None,
+        }
+    }
+
+    pub fn peer_removed(&self) -> Option<String> {
+        match self.ke_type {
+            IpconKeventTypePeerRemove => unsafe {
+                Some(
+                    CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                        .to_str()
+                        .unwrap_or("invalid")
+                        .to_string(),
+                )
+            },
+            _ => None,
+        }
+    }
+
+    pub fn group_added(&self) -> Option<(String, String)> {
+        match self.ke_type {
+            IpconKeventTypeGroupAdd => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid")
+                    .to_string();
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid")
+                    .to_string();
+                Some((peer_name, group_name))
+            },
+            _ => None,
+        }
+    }
+
+    pub fn group_removed(&self) -> Option<(String, String)> {
+        match self.ke_type {
+            IpconKeventTypeGroupRemove => unsafe {
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid")
+                    .to_string();
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                    .to_str()
+                    .unwrap_or("invalid")
+                    .to_string();
+                Some((peer_name, group_name))
+            },
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for IpconKevent {
