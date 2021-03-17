@@ -1,5 +1,4 @@
 extern crate ipcon_sys;
-use bytes::Bytes;
 use scheduler;
 use std::collections::HashMap;
 use std::env;
@@ -9,7 +8,7 @@ use getopts::Options;
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
 use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
 use ipcon_sys::logger::env_log_init;
-use ipcon_sys::{debug, error, error_str_result, info, warn, Result};
+use ipcon_sys::{error, info, Result};
 
 struct RIpconLogger {
     ih: Ipcon,
@@ -24,7 +23,7 @@ impl RIpconLogger {
         )
         .expect("Failed to create Ipcon handler");
 
-        ih.join_group(Ipcon::IpconKernelName, Ipcon::IpconKernelGroupName)
+        ih.join_group(Ipcon::IPCON_KERNEL_NAME, Ipcon::IPCON_KERNEL_GROUP_NAME)
             .expect("failed to join ipcon kevent group");
 
         if let Some(h) = &mut lookup {
@@ -103,7 +102,8 @@ fn main() {
 
     env_log_init();
 
-    scheduler::set_self_policy(scheduler::Policy::Fifo, 1);
+    scheduler::set_self_policy(scheduler::Policy::Fifo, 1)
+        .expect("failed to set scheduling policy");
 
     opts.optopt("j", "join-group", "Join a string group.", "");
 

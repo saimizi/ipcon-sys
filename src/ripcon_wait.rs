@@ -1,13 +1,11 @@
 extern crate ipcon_sys;
-use bytes::Bytes;
-use scheduler;
 use std::collections::HashMap;
 use std::env;
 use std::process::exit;
 
 use getopts::Options;
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
-use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
+use ipcon_sys::ipcon_msg::IpconMsg;
 use ipcon_sys::logger::env_log_init;
 
 fn main() {
@@ -15,8 +13,6 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     env_log_init();
-
-    scheduler::set_self_policy(scheduler::Policy::Fifo, 1);
 
     opts.optopt("p", "wait-peer", "Wait a peer.", "");
     opts.optopt("g", "wait-group", "Wait a group.", "");
@@ -29,7 +25,7 @@ fn main() {
     let ih = Ipcon::new(None, Some(IpconFlag::IPFDisableKeventFilter))
         .expect("failed to create ipcon handler");
 
-    ih.join_group(Ipcon::IpconKernelName, Ipcon::IpconKernelGroupName)
+    ih.join_group(Ipcon::IPCON_KERNEL_NAME, Ipcon::IPCON_KERNEL_GROUP_NAME)
         .expect("failed to join ipcon kevent group");
 
     let mut lookup = HashMap::new();

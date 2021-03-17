@@ -1,4 +1,3 @@
-use crate::debug;
 use crate::{error_str_result, Result};
 use bytes::{Bytes, BytesMut};
 use std::ffi::CStr;
@@ -9,10 +8,10 @@ pub const IPCON_MAX_PAYLOAD_LEN: usize = 2048;
 pub const IPCON_MAX_NAME_LEN: usize = 32;
 
 pub type IpconKeventType = std::os::raw::c_int;
-pub const IpconKeventTypePeerAdd: IpconKeventType = 0;
-pub const IpconKeventTypePeerRemove: IpconKeventType = 1;
-pub const IpconKeventTypeGroupAdd: IpconKeventType = 2;
-pub const IpconKeventTypeGroupRemove: IpconKeventType = 3;
+pub const IPCON_KEVENT_TYPE_PEER_ADD: IpconKeventType = 0;
+pub const IPCON_KEVENT_TYPE_PEER_REMOVE: IpconKeventType = 1;
+pub const IPCON_KEVENT_TYPE_GROUP_ADD: IpconKeventType = 2;
+pub const IPCON_KEVENT_TYPE_GROUP_REMOVE: IpconKeventType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -44,19 +43,19 @@ pub struct IpconKevent {
 impl IpconKevent {
     pub fn get_string(&self) -> String {
         match self.ke_type {
-            IpconKeventTypePeerAdd => unsafe {
+            IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("peer {} added", peer_name)
             },
-            IpconKeventTypePeerRemove => unsafe {
+            IPCON_KEVENT_TYPE_PEER_REMOVE => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
                 format!("peer {} removed", peer_name)
             },
-            IpconKeventTypeGroupAdd => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_ADD => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
@@ -66,7 +65,7 @@ impl IpconKevent {
                 format!("group {}@{} added", group_name, peer_name)
             },
 
-            IpconKeventTypeGroupRemove => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_REMOVE => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid");
@@ -81,7 +80,7 @@ impl IpconKevent {
 
     pub fn peer_added(&self) -> Option<String> {
         match self.ke_type {
-            IpconKeventTypePeerAdd => unsafe {
+            IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
                 Some(
                     CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                         .to_str()
@@ -95,7 +94,7 @@ impl IpconKevent {
 
     pub fn peer_removed(&self) -> Option<String> {
         match self.ke_type {
-            IpconKeventTypePeerRemove => unsafe {
+            IPCON_KEVENT_TYPE_PEER_REMOVE => unsafe {
                 Some(
                     CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                         .to_str()
@@ -109,7 +108,7 @@ impl IpconKevent {
 
     pub fn group_added(&self) -> Option<(String, String)> {
         match self.ke_type {
-            IpconKeventTypeGroupAdd => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_ADD => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
@@ -126,7 +125,7 @@ impl IpconKevent {
 
     pub fn group_removed(&self) -> Option<(String, String)> {
         match self.ke_type {
-            IpconKeventTypeGroupRemove => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_REMOVE => unsafe {
                 let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
@@ -149,10 +148,10 @@ impl fmt::Display for IpconKevent {
 }
 
 pub type LibIpconMsgType = std::os::raw::c_int;
-pub const LibIpconMsgTypeNormal: LibIpconMsgType = 0;
-pub const LibIpconMsgTypeGroup: LibIpconMsgType = 1;
-pub const LibIpconMsgTypeKevent: LibIpconMsgType = 2;
-pub const LibIpconMsgTypeInvalid: LibIpconMsgType = 3;
+pub const LIBIPCON_MSG_TYPE_NORMAL: LibIpconMsgType = 0;
+pub const LIBIPCON_MSG_TYPE_GROUP: LibIpconMsgType = 1;
+pub const LIBIPCON_MSG_TYPE_KEVENT: LibIpconMsgType = 2;
+pub const LIBIPCON_MSG_TYPE_INVALID: LibIpconMsgType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -174,7 +173,7 @@ pub struct LibIpconMsg {
 impl LibIpconMsg {
     pub fn new() -> LibIpconMsg {
         LibIpconMsg {
-            msg_type: LibIpconMsgTypeInvalid,
+            msg_type: LIBIPCON_MSG_TYPE_INVALID,
             peer: [0; IPCON_MAX_NAME_LEN],
             group: [0; IPCON_MAX_NAME_LEN],
             len: 0,
@@ -209,7 +208,7 @@ pub enum IpconMsg {
 impl IpconMsg {
     pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<'static, IpconMsg> {
         match msg.msg_type {
-            LibIpconMsgTypeNormal => {
+            LIBIPCON_MSG_TYPE_NORMAL => {
                 let peer_name: String;
 
                 unsafe {
@@ -234,7 +233,7 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            LibIpconMsgTypeGroup => {
+            LIBIPCON_MSG_TYPE_GROUP => {
                 let peer_name: String;
                 let group_name: String;
 
@@ -264,9 +263,11 @@ impl IpconMsg {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            LibIpconMsgTypeKevent => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone())) },
+            LIBIPCON_MSG_TYPE_KEVENT => unsafe {
+                Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone()))
+            },
 
-            LibIpconMsgTypeInvalid => Ok(IpconMsg::IpconMsgInvalid),
+            LIBIPCON_MSG_TYPE_INVALID => Ok(IpconMsg::IpconMsgInvalid),
             _ => Ok(IpconMsg::IpconMsgInvalid),
         }
     }

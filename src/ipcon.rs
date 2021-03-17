@@ -1,7 +1,7 @@
 extern crate libc;
+use crate::error;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
-use crate::{debug, error};
-use crate::{error_code_result, error_result, error_str_result, Result};
+use crate::{error_result, error_str_result, Result};
 use bytes::Bytes;
 use libc::{c_void, size_t};
 use std::ffi::CString;
@@ -55,8 +55,8 @@ pub enum IpconFlag {
 }
 
 impl Ipcon {
-    pub const IpconKernelName: &'static str = "ipcon";
-    pub const IpconKernelGroupName: &'static str = "ipcon_kevent";
+    pub const IPCON_KERNEL_NAME: &'static str = "ipcon";
+    pub const IPCON_KERNEL_GROUP_NAME: &'static str = "ipcon_kevent";
 
     fn valid_name(peer_name: &str) -> bool {
         if peer_name.is_empty() {
