@@ -1,4 +1,6 @@
 extern crate ipcon_sys;
+use libc::{c_int, sched_get_priority_min, sched_param, sched_setscheduler, SCHED_FIFO};
+use libc::{getrlimit, rlimit, setrlimit, RLIMIT_RTPRIO};
 use scheduler;
 use std::collections::HashMap;
 use std::env;
@@ -8,7 +10,7 @@ use getopts::Options;
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
 use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
 use ipcon_sys::logger::env_log_init;
-use ipcon_sys::{error, info, Result};
+use ipcon_sys::{debug, error, info, warn, Result};
 
 struct RIpconLogger {
     ih: Ipcon,
@@ -102,8 +104,53 @@ fn main() {
 
     env_log_init();
 
-    scheduler::set_self_policy(scheduler::Policy::Fifo, 1)
-        .expect("failed to set scheduling policy");
+    unsafe {
+        let rl = rlimit {
+            rlim_cur: 99,
+            rlim_max: 99,
+        };
+
+        let ret = setrlimit(RLIMIT_RTPRIO, &rl);
+        if ret < 0 {
+            warn!(
+                "setrlimit() failed: {} {:?}",
+                ret,
+                std::io::Error::last_os_error()
+            );
+        }
+
+        let mut rl = rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+
+        let ret = getrlimit(RLIMIT_RTPRIO, &mut rl);
+        if ret < 0 {
+            warn!(
+                "getrlimit() failed: {} {:?}",
+                ret,
+                std::io::Error::last_os_error()
+            );
+        }
+
+        debug!("RLIMIT_RTPRIO: cur: {} max: {}", rl.rlim_cur, rl.rlim_max);
+
+        let priority = sched_get_priority_min(SCHED_FIFO);
+
+        debug!("Min SCHED_FIFO priority: {}", priority);
+
+        let param = sched_param {
+            sched_priority: priority,
+        };
+        let ret = sched_setscheduler(0, SCHED_FIFO, &param as *const sched_param);
+        if ret != 0 {
+            warn!(
+                "Faied to set scheduling policy {} {:?}",
+                ret,
+                std::io::Error::last_os_error()
+            );
+        }
+    }
 
     opts.optopt("j", "join-group", "Join a string group.", "");
 
