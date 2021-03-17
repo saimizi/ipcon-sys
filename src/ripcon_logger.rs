@@ -1,7 +1,6 @@
 extern crate ipcon_sys;
-use libc::{c_int, sched_get_priority_min, sched_param, sched_setscheduler, SCHED_FIFO};
 use libc::{getrlimit, rlimit, setrlimit, RLIMIT_RTPRIO};
-use scheduler;
+use libc::{sched_get_priority_min, sched_param, sched_setscheduler, SCHED_FIFO};
 use std::collections::HashMap;
 use std::env;
 use std::process::exit;
