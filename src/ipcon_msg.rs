@@ -83,7 +83,7 @@ impl IpconKevent {
         match self.ke_type {
             IpconKeventTypePeerAdd => unsafe {
                 Some(
-                    CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                    CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                         .to_str()
                         .unwrap_or("invalid")
                         .to_string(),
@@ -97,7 +97,7 @@ impl IpconKevent {
         match self.ke_type {
             IpconKeventTypePeerRemove => unsafe {
                 Some(
-                    CStr::from_ptr(&self.u.peer.peer_name as *const u8)
+                    CStr::from_ptr(&self.u.peer.peer_name as *const i8)
                         .to_str()
                         .unwrap_or("invalid")
                         .to_string(),
@@ -110,11 +110,11 @@ impl IpconKevent {
     pub fn group_added(&self) -> Option<(String, String)> {
         match self.ke_type {
             IpconKeventTypeGroupAdd => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
                     .to_string();
-                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
                     .to_string();
@@ -127,11 +127,11 @@ impl IpconKevent {
     pub fn group_removed(&self) -> Option<(String, String)> {
         match self.ke_type {
             IpconKeventTypeGroupRemove => unsafe {
-                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const u8)
+                let peer_name = CStr::from_ptr(&self.u.group.peer_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
                     .to_string();
-                let group_name = CStr::from_ptr(&self.u.group.group_name as *const u8)
+                let group_name = CStr::from_ptr(&self.u.group.group_name as *const i8)
                     .to_str()
                     .unwrap_or("invalid")
                     .to_string();
