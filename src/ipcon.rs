@@ -81,8 +81,7 @@ impl Ipcon {
             flg = a as usize;
         }
 
-        let pname: *const c_char;
-        pname = match peer_name {
+        let pname = match peer_name {
             Some(a) => {
                 if !Ipcon::valid_name(a) {
                     error!("Ipcon::new() : Invalid peer name.");
@@ -98,7 +97,12 @@ impl Ipcon {
         };
 
         unsafe {
-            handler = ipcon_create_handler(pname, flg as usize);
+            handler = ipcon_create_handler(pname as *const c_char, flg as usize);
+
+            if !pname.is_null() {
+                /* deallocate the pname */
+                let _ = CString::from_raw(pname as *mut c_char);
+            }
         }
         if handler.is_null() {
             None
@@ -121,10 +125,13 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = is_peer_present(self.handler, p.into_raw());
+            let ptr = p.into_raw();
+            let ret = is_peer_present(self.handler, ptr as *const c_char);
             if ret != 0 {
                 present = true;
             }
+
+            let _ = CString::from_raw(ptr);
         }
 
         present
@@ -143,7 +150,12 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = is_group_present(self.handler, p.into_raw(), g.into_raw());
+            let ptr = p.into_raw();
+            let pgtr = g.into_raw();
+            let ret = is_group_present(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let _ = CString::from_raw(ptr);
+            let _ = CString::from_raw(pgtr);
+
             if ret != 0 {
                 present = true;
             }
@@ -180,12 +192,15 @@ impl Ipcon {
         };
 
         unsafe {
+            let ptr = pname.into_raw();
             let ret = ipcon_send_unicast(
                 self.handler,
-                pname.into_raw(),
+                ptr as *const c_char,
                 buf.as_ptr(),
                 buf.len() as size_t,
             );
+
+            let _ = CString::from_raw(ptr);
 
             if ret < 0 {
                 return error_result(ret, Some(String::from("System error.")));
@@ -206,7 +221,9 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = ipcon_register_group(self.handler, g.into_raw());
+            let ptr = g.into_raw();
+            let ret = ipcon_register_group(self.handler, ptr as *const c_char);
+            let _ = CString::from_raw(ptr);
             if ret < 0 {
                 return error_result(ret, Some(String::from("System error.")));
             }
@@ -226,7 +243,9 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = ipcon_unregister_group(self.handler, g.into_raw());
+            let ptr = g.into_raw();
+            let ret = ipcon_unregister_group(self.handler, ptr as *const c_char);
+            let _ = CString::from_raw(ptr);
             if ret < 0 {
                 return error_str_result(&format!("system error :{}", ret));
             }
@@ -255,7 +274,11 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = ipcon_join_group(self.handler, p.into_raw(), g.into_raw());
+            let ptr = p.into_raw();
+            let pgtr = g.into_raw();
+            let ret = ipcon_join_group(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let _ = CString::from_raw(ptr);
+            let _ = CString::from_raw(pgtr);
             if ret < 0 {
                 return error_result(ret, Some(String::from("System error.")));
             }
@@ -284,7 +307,12 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = ipcon_leave_group(self.handler, p.into_raw(), g.into_raw());
+            let ptr = p.into_raw();
+            let pgtr = g.into_raw();
+            let ret = ipcon_leave_group(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let _ = CString::from_raw(ptr);
+            let _ = CString::from_raw(pgtr);
+
             if ret < 0 {
                 return error_result(ret, Some(String::from("System error.")));
             }
@@ -313,13 +341,15 @@ impl Ipcon {
         }
 
         unsafe {
+            let pgtr = g.into_raw();
             let ret = ipcon_send_multicast(
                 self.handler,
-                g.into_raw(),
+                pgtr as *const c_char,
                 buf.as_ptr(),
                 buf.len() as size_t,
                 s,
             );
+            let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
                 return error_result(ret, Some(String::from("System error.")));
@@ -351,16 +381,5 @@ impl Ipcon {
 
     pub fn receive_msg_nonblock(&self) -> Result<IpconMsg> {
         self.receive_msg_timeout(0, 0)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ipcon::{Ipcon, IpconFlag};
-    #[test]
-    fn it_works() {
-        let ipcon = Ipcon::new("test", Some(IpconFlag::IPFDisableKeventFilter))
-            .expect("failed to create ipcon handler");
-        ipcon.free();
     }
 }
