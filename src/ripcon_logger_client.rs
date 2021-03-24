@@ -67,7 +67,8 @@ fn main() {
             },
             Err(e) => {
                 if e.err_code() == Message::READ_EOF_ERROR {
-                    warn!("Read 0 size.");
+                    error!("Remote disconnected.");
+                    break;
                 }
             }
         }
