@@ -1,15 +1,14 @@
-extern crate ipcon_sys;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
 pub mod client;
+pub mod logger;
 pub mod message;
 
 use client::Client;
-use ipcon_sys::logger::env_log_init;
-use ipcon_sys::{error, info};
+use logger::env_log_init;
 use message::Message;
 use std::process::exit;
 
@@ -68,8 +67,7 @@ fn main() {
             },
             Err(e) => {
                 if e.err_code() == Message::READ_EOF_ERROR {
-                    error!("Remote disconnected.");
-                    break;
+                    warn!("Read 0 size.");
                 }
             }
         }

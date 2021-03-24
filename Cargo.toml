@@ -6,26 +6,36 @@ edition = "2018"
 repository = "git@gitlab.com:joukan/ipcon-sys.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+#default = ["use-ipcon-logger"]
+use-ipcon-logger=[]
+use-self-logger=[]
 
 [lib]
 name = "ipcon_sys"
 path = "src/lib.rs"
+required-features = ["use-ipcon-logger"]
 
 [[bin]]
 name = "ripcon_cmd"
 path = "src/ripcon_cmd.rs"
+required-features = ["use-ipcon-logger"]
 
 [[bin]]
 name = "ripcon_logger"
 path = "src/ripcon_logger.rs"
+required-features = ["use-ipcon-logger"]
 
 [[bin]]
 name = "ripcon_wait"
 path = "src/ripcon_wait.rs"
+required-features = ["use-ipcon-logger"]
 
 [[bin]]
 name = "ripcon_logger_client"
 path = "src/ripcon_logger_client.rs"
+required-features = ["use-self-logger"]
+
 
 [dependencies]
 libc = "0.2.88"

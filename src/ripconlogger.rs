@@ -1,8 +1,9 @@
 extern crate ipcon_sys;
 use crate::message::Message;
+use crate::{debug, error, info};
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
 use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
-use ipcon_sys::{debug, error, info, Result};
+use ipcon_sys::logger::Result;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::net::{TcpListener, TcpStream};

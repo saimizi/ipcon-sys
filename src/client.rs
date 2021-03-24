@@ -1,4 +1,4 @@
-use ipcon_sys::{error_str_result, Error, Result};
+use crate::logger::{error_str_result, Error, Result};
 
 use std::net::TcpStream;
 use std::str;

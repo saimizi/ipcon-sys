@@ -7,6 +7,7 @@ extern crate serde_json;
 pub mod message;
 pub mod ripconlogger;
 
+use ipcon_sys::{debug, error, info, warn};
 use libc::{getrlimit, rlimit, setrlimit, RLIMIT_RTPRIO};
 use libc::{sched_get_priority_min, sched_param, sched_setscheduler, SCHED_FIFO};
 use std::collections::HashMap;
@@ -15,7 +16,6 @@ use std::process::exit;
 
 use getopts::Options;
 use ipcon_sys::logger::env_log_init;
-use ipcon_sys::{debug, error, warn};
 
 use ripconlogger::RIpconLogger;
 

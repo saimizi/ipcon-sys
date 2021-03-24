@@ -1,6 +1,13 @@
 use bincode;
 use bytes::{Bytes, BytesMut};
-use ipcon_sys::{debug, error_str_result, Error, Result};
+
+#[cfg(feature = "use-self-logger")]
+use crate::logger::{error_str_result, Error, Result};
+
+#[cfg(feature = "use-ipcon-logger")]
+use ipcon_sys::logger::{error_str_result, Error, Result};
+
+use crate::debug;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 

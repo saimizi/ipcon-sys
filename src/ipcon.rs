@@ -1,7 +1,7 @@
 extern crate libc;
 use crate::error;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
-use crate::{error_result, error_str_result, Result};
+use crate::logger::{error_result, error_str_result, Result};
 use bytes::Bytes;
 use libc::{c_void, size_t};
 use std::ffi::CString;
