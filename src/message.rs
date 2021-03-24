@@ -1,11 +1,14 @@
 use bincode;
 use bytes::{Bytes, BytesMut};
+use cfg_if;
 
-#[cfg(feature = "use-self-logger")]
-use crate::logger::{error_str_result, Error, Result};
-
-#[cfg(feature = "use-ipcon-logger")]
-use ipcon_sys::logger::{error_str_result, Error, Result};
+cfg_if::cfg_if! {
+    if #[cfg(feature = "use-self-logger")] {
+        use crate::logger::{error_str_result, Error, Result};
+    } else {
+        use ipcon_sys::logger::{error_str_result, Error, Result};
+    }
+}
 
 use crate::debug;
 use std::io::{Read, Write};
@@ -85,6 +88,8 @@ impl Message {
 
     pub fn to_bytes_with_header(&self) -> Result<Bytes> {
         let body = self.to_bytes()?;
+
+        debug!("to_bytes_with_header: body len {}", body.len());
         let mut h = BytesMut::from(
             MessageHeader {
                 tag: MESSAGE_HEADER_TAG,
