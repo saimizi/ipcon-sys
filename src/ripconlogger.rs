@@ -1,12 +1,38 @@
 extern crate ipcon_sys;
+use crate::message::Message;
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
 use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
-use ipcon_sys::{info, Result};
+use ipcon_sys::{debug, error, info, Result};
 use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::net::{TcpListener, TcpStream};
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn handle_client(m: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) -> i32 {
+    let listener: TcpListener;
+    listener = TcpListener::bind("0.0.0.0:7878").expect("Failed to bind address");
+    info!("Listen on 0.0.0.0:7878...");
+
+    for stream in listener.incoming() {
+        if let Ok(s) = stream {
+            if let Ok(a) = s.peer_addr() {
+                debug!("Connected from {}", a);
+                let mut h = m.lock().unwrap();
+                h.insert(a, s);
+            }
+        }
+    }
+
+    0
+}
 
 pub struct RIpconLogger {
     ih: Ipcon,
     lookup: Option<HashMap<String, bool>>,
+    thread: thread::JoinHandle<i32>,
+    streams: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>,
 }
 
 impl RIpconLogger {
@@ -18,7 +44,7 @@ impl RIpconLogger {
             .expect("Failed to create Ipcon handler");
 
         ih.join_group(Ipcon::IPCON_KERNEL_NAME, Ipcon::IPCON_KERNEL_GROUP_NAME)
-            .expect("failed to join ipcon kevent group");
+            .expect("Failed to join ipcon kevent group");
 
         if let Some(h) = &mut lookup {
             for pg in h.keys() {
@@ -31,14 +57,33 @@ impl RIpconLogger {
             }
         }
 
+        let m = Arc::new(Mutex::new(HashMap::new()));
+        let t = Arc::clone(&m);
+
+        let server_handler = thread::spawn(move || handle_client(t));
+
         Ok(RIpconLogger {
             ih: ih,
             lookup: lookup,
+            thread: server_handler,
+            streams: m,
         })
     }
 
     pub fn receive_msg(&self) -> Result<IpconMsg> {
         self.ih.receive_msg()
+    }
+
+    pub fn send_remote(&self, msg: &str) -> Result<()> {
+        let m = Message::MsgData(String::from(msg).into_bytes());
+
+        let mut h = self.streams.lock().unwrap();
+        for (addr, stream) in &mut *h {
+            debug!("Send message to {}", addr);
+            let _ = m.send_to(stream);
+        }
+
+        Ok(())
     }
 
     pub fn log_user_msg(&self, msg: IpconMsgBody) {
@@ -62,6 +107,10 @@ impl RIpconLogger {
             }
             _ => (),
         }
+
+        if let Err(e) = self.send_remote(&content) {
+            error!("{}", e);
+        }
     }
 
     pub fn log_kevent_msg(&self, msg: IpconKevent) {
@@ -83,6 +132,10 @@ impl RIpconLogger {
             }
         }
         info!("{}", msg.to_string());
+
+        if let Err(e) = self.send_remote(&msg.to_string()) {
+            error!("{}", e);
+        }
     }
 
     pub fn log_msg(&self, msg: IpconMsg) {
@@ -94,6 +147,7 @@ impl RIpconLogger {
     }
 
     pub fn free(self) {
+        self.thread.join().expect("Failed to join the thread");
         self.ih.free();
     }
 }

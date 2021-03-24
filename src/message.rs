@@ -1,14 +1,12 @@
 use bincode;
 use bytes::{Bytes, BytesMut};
-use ipcon_sys::{debug, error_str_result, info, Error, Result};
+use ipcon_sys::{debug, error_str_result, Error, Result};
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Message {
-    MsgFormat(Vec<u8>),
     MsgData(Vec<u8>),
-    MsgReboot,
     MsgErr(String),
     MsgOk,
 }
