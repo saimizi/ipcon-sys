@@ -7,6 +7,7 @@ use std::net::TcpStream;
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Message {
     MsgData(Vec<u8>),
+    MsgStrData(String),
     MsgErr(String),
     MsgOk,
 }

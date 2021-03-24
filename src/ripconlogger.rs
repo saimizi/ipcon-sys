@@ -75,7 +75,7 @@ impl RIpconLogger {
     }
 
     pub fn send_remote(&self, msg: &str) -> Result<()> {
-        let m = Message::MsgData(String::from(msg).into_bytes());
+        let m = Message::MsgStrData(String::from(msg));
 
         let mut h = self.streams.lock().unwrap();
         for (addr, stream) in &mut *h {
@@ -94,22 +94,31 @@ impl RIpconLogger {
         match msg.msg_type {
             IpconMsgType::IpconMsgTypeNormal => {
                 let lines = content.split("\n");
+                let mut remote_msg = String::new();
 
                 for l in lines {
                     info!("{}: {}", msg.peer, l);
+                    remote_msg.push_str(&format!("{} : {}\n", msg.peer, l));
+                }
+
+                if let Err(e) = self.send_remote(&remote_msg) {
+                    error!("{}", e);
                 }
             }
             IpconMsgType::IpconMsgTypeGroup => {
                 let lines = content.split("\n");
+                let mut remote_msg = String::new();
+
                 for l in lines {
                     info!("{}@{}: {}", group, msg.peer, l);
+                    remote_msg.push_str(&format!("{}@{} : {}\n", group, msg.peer, l));
+                }
+
+                if let Err(e) = self.send_remote(&remote_msg) {
+                    error!("{}", e);
                 }
             }
             _ => (),
-        }
-
-        if let Err(e) = self.send_remote(&content) {
-            error!("{}", e);
         }
     }
 

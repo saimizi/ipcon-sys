@@ -23,6 +23,10 @@ path = "src/ripcon_logger.rs"
 name = "ripcon_wait"
 path = "src/ripcon_wait.rs"
 
+[[bin]]
+name = "ripcon_logger_client"
+path = "src/ripcon_logger_client.rs"
+
 [dependencies]
 libc = "0.2.88"
 getopts = "0.2.21"
