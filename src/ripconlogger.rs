@@ -102,7 +102,8 @@ impl RIpconLogger {
                     remote_msg.push_str(&format!("{} : {}\n", msg.peer, l));
                 }
 
-                if let Err(e) = self.send_remote(&remote_msg) {
+                /* remove last newline character */
+                if let Err(e) = self.send_remote(remote_msg.trim_end()) {
                     error!("{}", e);
                 }
             }
@@ -115,7 +116,8 @@ impl RIpconLogger {
                     remote_msg.push_str(&format!("{}@{} : {}\n", group, msg.peer, l));
                 }
 
-                if let Err(e) = self.send_remote(&remote_msg) {
+                /* remove last newline character */
+                if let Err(e) = self.send_remote(remote_msg.trim_end()) {
                     error!("{}", e);
                 }
             }
