@@ -220,7 +220,7 @@ impl IpconMsg {
 
                 let buf: BytesMut;
                 unsafe {
-                    buf = BytesMut::from(&msg.u.buf[..]);
+                    buf = BytesMut::from(&msg.u.buf[..msg.len as usize]);
                 }
 
                 let m = IpconMsgBody {
@@ -251,7 +251,7 @@ impl IpconMsg {
 
                 let buf: BytesMut;
                 unsafe {
-                    buf = BytesMut::from(&msg.u.buf[..]);
+                    buf = BytesMut::from(&msg.u.buf[..msg.len as usize]);
                 }
 
                 let m = IpconMsgBody {
