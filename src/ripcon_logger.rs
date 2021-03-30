@@ -4,6 +4,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
+pub mod infomgr_msg;
 pub mod message;
 pub mod ripconlogger;
 

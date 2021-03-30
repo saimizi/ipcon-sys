@@ -1,4 +1,5 @@
 extern crate ipcon_sys;
+use crate::infomgr_msg::InfomgrReport;
 use crate::message::Message;
 use crate::{debug, error, info};
 use ipcon_sys::ipcon::{Ipcon, IpconFlag};
@@ -88,12 +89,10 @@ impl RIpconLogger {
     }
 
     pub fn log_user_msg(&self, msg: IpconMsgBody) {
-        let content =
-            String::from_utf8(msg.buf.to_vec()).unwrap_or(String::from("Non text message"));
-        let group = msg.group.unwrap_or(String::from("?"));
-
         match msg.msg_type {
             IpconMsgType::IpconMsgTypeNormal => {
+                let content =
+                    String::from_utf8(msg.buf.to_vec()).unwrap_or(String::from("Non text message"));
                 let lines = content.split("\n");
                 let mut remote_msg = String::new();
 
@@ -108,6 +107,16 @@ impl RIpconLogger {
                 }
             }
             IpconMsgType::IpconMsgTypeGroup => {
+                let content: String;
+                let group = msg.group.unwrap_or(String::from("?"));
+
+                if msg.peer == InfomgrReport::PEER_NAME && group == InfomgrReport::GROUP_NAME {
+                    content = InfomgrReport::new(&msg.buf).to_string();
+                } else {
+                    content = String::from_utf8(msg.buf.to_vec())
+                        .unwrap_or(String::from("Non text message"));
+                }
+
                 let lines = content.split("\n");
                 let mut remote_msg = String::new();
 
