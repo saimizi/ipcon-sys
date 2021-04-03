@@ -5,7 +5,7 @@ use std::process::exit;
 
 use getopts::Options;
 use ipcon_sys::error;
-use ipcon_sys::ipcon::Ipcon;
+use ipcon_sys::ipcon::{Ipcon, IPF_SND_IF};
 use ipcon_sys::logger::env_log_init;
 
 fn main() {
@@ -38,7 +38,7 @@ fn main() {
         }
     };
 
-    let ih = Ipcon::new(None, None).expect("failed to create ipcon handler");
+    let ih = Ipcon::new(None, Some(IPF_SND_IF)).expect("failed to create ipcon handler");
     if let Err(e) = ih.send_unicast_msg(&pname, Bytes::from(msg)) {
         error!(e);
     }

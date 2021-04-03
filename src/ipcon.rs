@@ -50,9 +50,11 @@ pub struct Ipcon {
     handler: *mut c_void,
 }
 
-pub enum IpconFlag {
-    IPFDisableKeventFilter = 1,
-}
+pub type IpconFlag = std::os::raw::c_ulong;
+pub const IPF_DISABLE_KEVENT_FILTER: IpconFlag = 0x1 << 0;
+pub const IPF_RCV_IF: IpconFlag = 0x1 << 1;
+pub const IPF_SND_IF: IpconFlag = 0x1 << 2;
+pub const IPF_DEFULT: IpconFlag = IPF_RCV_IF | IPF_SND_IF;
 
 impl Ipcon {
     pub const IPCON_KERNEL_NAME: &'static str = "ipcon";

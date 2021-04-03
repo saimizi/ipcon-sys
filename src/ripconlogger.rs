@@ -2,7 +2,7 @@ extern crate ipcon_sys;
 use crate::infomgr_msg::InfomgrReport;
 use crate::message::Message;
 use crate::{debug, error, info};
-use ipcon_sys::ipcon::{Ipcon, IpconFlag};
+use ipcon_sys::ipcon::{Ipcon, IPF_DISABLE_KEVENT_FILTER, IPF_RCV_IF};
 use ipcon_sys::ipcon_msg::{IpconKevent, IpconMsg, IpconMsgBody, IpconMsgType};
 use ipcon_sys::logger::Result;
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ impl RIpconLogger {
         name: &str,
         mut lookup: Option<HashMap<String, bool>>,
     ) -> Result<'static, RIpconLogger> {
-        let ih = Ipcon::new(Some(name), Some(IpconFlag::IPFDisableKeventFilter))
+        let ih = Ipcon::new(Some(name), Some(IPF_DISABLE_KEVENT_FILTER | IPF_RCV_IF))
             .expect("Failed to create Ipcon handler");
 
         ih.join_group(Ipcon::IPCON_KERNEL_NAME, Ipcon::IPCON_KERNEL_GROUP_NAME)

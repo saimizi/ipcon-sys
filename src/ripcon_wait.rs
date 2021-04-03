@@ -4,7 +4,7 @@ use std::env;
 use std::process::exit;
 
 use getopts::Options;
-use ipcon_sys::ipcon::{Ipcon, IpconFlag};
+use ipcon_sys::ipcon::{Ipcon, IPF_DISABLE_KEVENT_FILTER, IPF_RCV_IF};
 use ipcon_sys::ipcon_msg::IpconMsg;
 use ipcon_sys::logger::env_log_init;
 
@@ -22,7 +22,7 @@ fn main() {
         exit(1)
     });
 
-    let ih = Ipcon::new(None, Some(IpconFlag::IPFDisableKeventFilter))
+    let ih = Ipcon::new(None, Some(IPF_DISABLE_KEVENT_FILTER | IPF_RCV_IF))
         .expect("failed to create ipcon handler");
 
     ih.join_group(Ipcon::IPCON_KERNEL_NAME, Ipcon::IPCON_KERNEL_GROUP_NAME)
