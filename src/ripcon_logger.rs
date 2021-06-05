@@ -20,6 +20,13 @@ use ipcon_sys::logger::env_log_init;
 
 use ripconlogger::RIpconLogger;
 
+fn show_help() {
+    eprintln!("Usage:ripcon_logger");
+    eprintln!("\t[-j  group@peer1,group@peer2,...");
+    eprintln!("\t[-h | --help]");
+    eprintln!("ripcon_logger listens port 7878.");
+}
+
 fn main() {
     let mut opts = Options::new();
     let args: Vec<String> = env::args().collect();
@@ -75,11 +82,20 @@ fn main() {
     }
 
     opts.optopt("j", "join-group", "Join a string group.", "");
+    opts.optflag("h", "help", "Show help information.");
 
     let matches = opts.parse(&args[1..]).unwrap_or_else(|e| {
         eprintln!("{}", e);
+        eprintln!("");
+        show_help();
         exit(1)
     });
+
+    let s = [String::from("h")];
+    if matches.opts_present(&s) {
+        show_help();
+        return;
+    }
 
     let mut lookup = HashMap::new();
 

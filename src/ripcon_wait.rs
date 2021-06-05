@@ -8,17 +8,27 @@ use ipcon_sys::ipcon::{Ipcon, IPF_DISABLE_KEVENT_FILTER, IPF_RCV_IF};
 use ipcon_sys::ipcon_msg::IpconMsg;
 use ipcon_sys::logger::env_log_init;
 
+fn show_help() {
+    eprintln!("Usage: ripcon_wait");
+    eprintln!("\t[-p  pee1,peer2,...]");
+    eprintln!("\t[-g  group@peer1,group@peer2,...]");
+    eprintln!("\t[-h | --help]");
+}
+
 fn main() {
     let mut opts = Options::new();
     let args: Vec<String> = env::args().collect();
 
     env_log_init();
 
-    opts.optopt("p", "wait-peer", "Wait a peer.", "");
-    opts.optopt("g", "wait-group", "Wait a group.", "");
+    opts.optopt("p", "wait-peers", "Wait peers.", "");
+    opts.optopt("g", "wait-groups", "Wait groups.", "");
+    opts.optflag("h", "help", "Show help information.");
 
     let matches = opts.parse(&args[1..]).unwrap_or_else(|e| {
         eprintln!("{}", e);
+        eprintln!("");
+        show_help();
         exit(1)
     });
 
@@ -29,6 +39,12 @@ fn main() {
         .expect("failed to join ipcon kevent group");
 
     let mut lookup = HashMap::new();
+
+    let s = [String::from("h")];
+    if matches.opts_present(&s) {
+        show_help();
+        return;
+    }
 
     /*-g group@peer1,group@peer2,,,*/
     match matches.opt_str("g") {

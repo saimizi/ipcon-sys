@@ -14,6 +14,12 @@ use std::process::exit;
 
 use getopts::Options;
 
+fn show_help() {
+    eprintln!("Usage:RUST_LOG=info ripcon_logger_client");
+    eprintln!("\t[-c  <Server ip>:<port> (ex: \"127.0.0.1:7878\")");
+    eprintln!("\t[-h | --help]");
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -23,16 +29,24 @@ fn main() {
     opts.optopt(
         "c",
         "",
-        "Specify remote ip address and port. Ex: \"127.0.0.0:8888\"",
+        "Specify remote ip address and port. Ex: \"127.0.0.1:8888\"",
         "",
     );
 
-    opts.optflag("h", "help", "Print help");
+    opts.optflag("h", "help", "Show help information.");
 
     let matches = opts.parse(&args[1..]).unwrap_or_else(|e| {
-        eprintln!("opts.parse(): {}", e);
+        eprintln!("{}", e);
+        eprintln!("");
+        show_help();
         exit(1)
     });
+
+    let s = [String::from("h")];
+    if matches.opts_present(&s) {
+        show_help();
+        return;
+    }
 
     let mut client = Client::new().unwrap_or_else(|e| {
         eprintln!("Client::new():{}", e);
@@ -45,6 +59,7 @@ fn main() {
                 eprintln!("client.connect(): {}", e);
                 exit(1)
             });
+            info!("Log server {} connected", ip_str);
         }
         None => {
             error!("No server specified");
