@@ -1,7 +1,7 @@
-use crate::logger::{error_str_result, Result};
 use bytes::{Bytes, BytesMut};
 use std::ffi::CStr;
 use std::fmt;
+use std::io::{Error, ErrorKind, Result};
 use std::os::raw::c_char;
 
 pub const IPCON_MAX_PAYLOAD_LEN: usize = 2048;
@@ -206,7 +206,7 @@ pub enum IpconMsg {
 }
 
 impl IpconMsg {
-    pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<'static, IpconMsg> {
+    pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<IpconMsg> {
         match msg.msg_type {
             LIBIPCON_MSG_TYPE_NORMAL => {
                 let peer_name: String;
@@ -214,7 +214,7 @@ impl IpconMsg {
                 unsafe {
                     peer_name = match CStr::from_ptr(&msg.peer as *const i8).to_str() {
                         Ok(p) => String::from(p),
-                        Err(_) => return error_str_result("Invalid peer name"),
+                        Err(e) => return Err(Error::new(ErrorKind::InvalidData, e.to_string())),
                     };
                 }
 
@@ -240,12 +240,12 @@ impl IpconMsg {
                 unsafe {
                     peer_name = match CStr::from_ptr(&msg.peer as *const i8).to_str() {
                         Ok(p) => String::from(p),
-                        Err(_) => return error_str_result("Invalid peer name"),
+                        Err(e) => return Err(Error::new(ErrorKind::InvalidData, e.to_string())),
                     };
 
                     group_name = match CStr::from_ptr(&msg.group as *const i8).to_str() {
                         Ok(p) => String::from(p),
-                        Err(_) => return error_str_result("Invalid group name"),
+                        Err(e) => return Err(Error::new(ErrorKind::InvalidData, e.to_string())),
                     };
                 }
 

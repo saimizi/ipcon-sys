@@ -1,10 +1,10 @@
 extern crate libc;
 use crate::error;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
-use crate::logger::{error_result, error_str_result, Result};
 use bytes::Bytes;
 use libc::{c_void, size_t};
 use std::ffi::CString;
+use std::io::{Error, ErrorKind, Result};
 use std::os::raw::{c_char, c_uchar};
 
 #[link(name = "ipcon")]
@@ -109,7 +109,7 @@ impl Ipcon {
         if handler.is_null() {
             None
         } else {
-            Some(Ipcon { handler: handler })
+            Some(Ipcon { handler })
         }
     }
 
@@ -172,7 +172,7 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv(self.handler, &lmsg);
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error"));
             }
         }
 
@@ -181,16 +181,22 @@ impl Ipcon {
 
     pub fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
         if !Ipcon::valid_name(peer) {
-            return error_str_result(&format!("Name is too long > {}", IPCON_MAX_NAME_LEN));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("Name is too long > {}", IPCON_MAX_NAME_LEN),
+            ));
         }
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return error_str_result(&format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN),
+            ));
         }
 
         let pname = match CString::new(peer) {
             Ok(s) => s,
-            Err(_) => return error_str_result("Invalid peer"),
+            Err(e) => return Err(Error::new(ErrorKind::InvalidData, e.to_string())),
         };
 
         unsafe {
@@ -205,7 +211,7 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
 
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, String::from("System error.")));
             }
         }
 
@@ -214,12 +220,15 @@ impl Ipcon {
 
     pub fn register_group(&self, group: &str) -> Result<()> {
         if !Ipcon::valid_name(group) {
-            return error_str_result("Invalid group name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid group name".to_string(),
+            ));
         }
 
         let g = match CString::new(group) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         unsafe {
@@ -227,7 +236,7 @@ impl Ipcon {
             let ret = ipcon_register_group(self.handler, ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
@@ -236,12 +245,15 @@ impl Ipcon {
 
     pub fn unregister_group(&self, group: &str) -> Result<()> {
         if !Ipcon::valid_name(group) {
-            return error_str_result("Invalid group name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid group name".to_string(),
+            ));
         }
 
         let g = match CString::new(group) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         unsafe {
@@ -249,7 +261,7 @@ impl Ipcon {
             let ret = ipcon_unregister_group(self.handler, ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return error_str_result(&format!("system error :{}", ret));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
@@ -258,21 +270,27 @@ impl Ipcon {
 
     pub fn join_group(&self, peer: &str, group: &str) -> Result<()> {
         if !Ipcon::valid_name(peer) {
-            return error_str_result("Invalid peer name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid peer name".to_string(),
+            ));
         }
 
         if !Ipcon::valid_name(group) {
-            return error_str_result("Invalid group name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid group name".to_string(),
+            ));
         }
 
         let p = match CString::new(peer) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         let g = match CString::new(group) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         unsafe {
@@ -282,7 +300,7 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
@@ -291,21 +309,27 @@ impl Ipcon {
 
     pub fn leave_group(&self, peer: &str, group: &str) -> Result<()> {
         if !Ipcon::valid_name(peer) {
-            return error_str_result("Invalid peer name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid peer name".to_string(),
+            ));
         }
 
         if !Ipcon::valid_name(group) {
-            return error_str_result("Invalid group name");
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Invalid group name".to_string(),
+            ));
         }
 
         let p = match CString::new(peer) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         let g = match CString::new(group) {
             Ok(a) => a,
-            Err(e) => return error_str_result(&format!("{}", e)),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         unsafe {
@@ -316,7 +340,7 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
@@ -325,16 +349,22 @@ impl Ipcon {
 
     pub fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
         if !Ipcon::valid_name(group) {
-            return error_str_result(&format!("Name is too long > {}", IPCON_MAX_NAME_LEN));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("Name is too long > {}", IPCON_MAX_NAME_LEN),
+            ));
         }
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return error_str_result(&format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN),
+            ));
         }
 
         let g = match CString::new(group) {
             Ok(s) => s,
-            Err(_) => return error_str_result("Invalid group"),
+            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
         };
 
         let mut s: i32 = 0;
@@ -354,7 +384,7 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
@@ -372,9 +402,12 @@ impl Ipcon {
             let ret = ipcon_rcv_timeout(self.handler, &lmsg, &t);
             if ret < 0 {
                 if ret == -libc::ETIMEDOUT {
-                    return error_result(ret, Some(String::from("Receive message timetout.")));
+                    return Err(Error::new(
+                        ErrorKind::TimedOut,
+                        String::from("Receive message timetout."),
+                    ));
                 }
-                return error_result(ret, Some(String::from("System error.")));
+                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
             }
         }
 
