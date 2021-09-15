@@ -3,6 +3,7 @@ use crate::error;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
 use bytes::Bytes;
 use libc::{c_void, size_t};
+use nix::errno::Errno;
 use std::ffi::CString;
 use std::io::{Error, ErrorKind, Result};
 use std::os::raw::{c_char, c_uchar};
@@ -55,6 +56,17 @@ pub const IPF_DISABLE_KEVENT_FILTER: IpconFlag = 0x1 << 0;
 pub const IPF_RCV_IF: IpconFlag = 0x1 << 1;
 pub const IPF_SND_IF: IpconFlag = 0x1 << 2;
 pub const IPF_DEFULT: IpconFlag = IPF_RCV_IF | IPF_SND_IF;
+
+fn errno_to_error(i: i32) -> Error {
+    let eno = Errno::from_i32(i.abs());
+    match eno {
+        Errno::ETIMEDOUT => Error::new(ErrorKind::TimedOut, eno.desc()),
+        Errno::EINVAL => Error::new(ErrorKind::InvalidInput, eno.desc()),
+        Errno::EPERM => Error::new(ErrorKind::PermissionDenied, eno.desc()),
+        Errno::ENOMEM => Error::new(ErrorKind::OutOfMemory, eno.desc()),
+        _ => Error::new(ErrorKind::Other, eno.desc()),
+    }
+}
 
 impl Ipcon {
     pub const IPCON_KERNEL_NAME: &'static str = "ipcon";
@@ -172,7 +184,7 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv(self.handler, &lmsg);
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error"));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -211,7 +223,7 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
 
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, String::from("System error.")));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -236,7 +248,7 @@ impl Ipcon {
             let ret = ipcon_register_group(self.handler, ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -261,7 +273,7 @@ impl Ipcon {
             let ret = ipcon_unregister_group(self.handler, ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -300,7 +312,7 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -340,7 +352,7 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -384,7 +396,7 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
@@ -401,13 +413,7 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv_timeout(self.handler, &lmsg, &t);
             if ret < 0 {
-                if ret == -libc::ETIMEDOUT {
-                    return Err(Error::new(
-                        ErrorKind::TimedOut,
-                        String::from("Receive message timetout."),
-                    ));
-                }
-                return Err(Error::new(ErrorKind::Other, "System error".to_string()));
+                return Err(errno_to_error(ret));
             }
         }
 
