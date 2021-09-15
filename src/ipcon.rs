@@ -63,7 +63,6 @@ fn errno_to_error(i: i32) -> Error {
         Errno::ETIMEDOUT => Error::new(ErrorKind::TimedOut, eno.desc()),
         Errno::EINVAL => Error::new(ErrorKind::InvalidInput, eno.desc()),
         Errno::EPERM => Error::new(ErrorKind::PermissionDenied, eno.desc()),
-        Errno::ENOMEM => Error::new(ErrorKind::OutOfMemory, eno.desc()),
         _ => Error::new(ErrorKind::Other, eno.desc()),
     }
 }
