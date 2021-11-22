@@ -45,6 +45,9 @@ extern "C" {
         im: &LibIpconMsg,
         timeout: *const libc::timeval,
     ) -> i32;
+    fn ipcon_get_read_fd(handler: *mut c_void) -> i32;
+    fn ipcon_get_write_fd(handler: *mut c_void) -> i32;
+    fn ipcon_get_ctrl_fd(handler: *mut c_void) -> i32;
 }
 
 pub struct Ipcon {
@@ -124,6 +127,39 @@ impl Ipcon {
         }
     }
 
+    pub fn get_read_fd(&self) -> Option<i32> {
+        unsafe {
+            let fd = ipcon_get_read_fd(self.handler);
+            if fd == -1 {
+                None
+            } else {
+                Some(fd)
+            }
+        }
+    }
+
+    pub fn get_write_fd(&self) -> Option<i32> {
+        unsafe {
+            let fd = ipcon_get_write_fd(self.handler);
+            if fd == -1 {
+                None
+            } else {
+                Some(fd)
+            }
+        }
+    }
+
+    pub fn get_ctrl_fd(&self) -> Option<i32> {
+        unsafe {
+            let fd = ipcon_get_ctrl_fd(self.handler);
+            if fd == -1 {
+                None
+            } else {
+                Some(fd)
+            }
+        }
+    }
+
     pub fn free(self) {
         unsafe {
             ipcon_free_handler(self.handler);
@@ -191,6 +227,10 @@ impl Ipcon {
     }
 
     pub fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
+        self.send_unicast_msg_by_ref(peer, &buf)
+    }
+
+    pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &Bytes) -> Result<()> {
         if !Ipcon::valid_name(peer) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -359,6 +399,10 @@ impl Ipcon {
     }
 
     pub fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
+        self.send_multicast_by_ref(group, &buf, sync)
+    }
+
+    pub fn send_multicast_by_ref(&self, group: &str, buf: &Bytes, sync: bool) -> Result<()> {
         if !Ipcon::valid_name(group) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
