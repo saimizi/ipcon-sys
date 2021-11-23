@@ -51,7 +51,7 @@ extern "C" {
 }
 
 pub struct Ipcon {
-    handler: *mut c_void,
+    handler: usize,
 }
 
 pub type IpconFlag = std::os::raw::c_ulong;
@@ -89,6 +89,14 @@ pub fn valid_name(name: &str) -> bool {
 }
 
 impl Ipcon {
+    pub fn to_handler(u: usize) -> *mut c_void {
+        unsafe { std::mem::transmute::<usize, *mut c_void>(u) }
+    }
+
+    pub fn from_handler(h: *mut c_void) -> usize {
+        unsafe { std::mem::transmute::<*mut c_void, usize>(h) }
+    }
+
     pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Option<Ipcon> {
         let handler: *mut c_void;
         let mut flg = 0 as usize;
@@ -123,13 +131,15 @@ impl Ipcon {
         if handler.is_null() {
             None
         } else {
-            Some(Ipcon { handler })
+            Some(Ipcon {
+                handler: Ipcon::from_handler(handler),
+            })
         }
     }
 
     pub fn get_read_fd(&self) -> Option<i32> {
         unsafe {
-            let fd = ipcon_get_read_fd(self.handler);
+            let fd = ipcon_get_read_fd(Ipcon::to_handler(self.handler));
             if fd == -1 {
                 None
             } else {
@@ -140,7 +150,7 @@ impl Ipcon {
 
     pub fn get_write_fd(&self) -> Option<i32> {
         unsafe {
-            let fd = ipcon_get_write_fd(self.handler);
+            let fd = ipcon_get_write_fd(Ipcon::to_handler(self.handler));
             if fd == -1 {
                 None
             } else {
@@ -151,7 +161,7 @@ impl Ipcon {
 
     pub fn get_ctrl_fd(&self) -> Option<i32> {
         unsafe {
-            let fd = ipcon_get_ctrl_fd(self.handler);
+            let fd = ipcon_get_ctrl_fd(Ipcon::to_handler(self.handler));
             if fd == -1 {
                 None
             } else {
@@ -162,7 +172,7 @@ impl Ipcon {
 
     pub fn free(self) {
         unsafe {
-            ipcon_free_handler(self.handler);
+            ipcon_free_handler(Ipcon::to_handler(self.handler));
         }
     }
 
@@ -175,7 +185,7 @@ impl Ipcon {
 
         unsafe {
             let ptr = p.into_raw();
-            let ret = is_peer_present(self.handler, ptr as *const c_char);
+            let ret = is_peer_present(Ipcon::to_handler(self.handler), ptr as *const c_char);
             if ret != 0 {
                 present = true;
             }
@@ -201,7 +211,11 @@ impl Ipcon {
         unsafe {
             let ptr = p.into_raw();
             let pgtr = g.into_raw();
-            let ret = is_group_present(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let ret = is_group_present(
+                Ipcon::to_handler(self.handler),
+                ptr as *const c_char,
+                pgtr as *const c_char,
+            );
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
 
@@ -217,7 +231,7 @@ impl Ipcon {
         let lmsg = LibIpconMsg::new();
 
         unsafe {
-            let ret = ipcon_rcv(self.handler, &lmsg);
+            let ret = ipcon_rcv(Ipcon::to_handler(self.handler), &lmsg);
             if ret < 0 {
                 return Err(errno_to_error(ret));
             }
@@ -253,7 +267,7 @@ impl Ipcon {
         unsafe {
             let ptr = pname.into_raw();
             let ret = ipcon_send_unicast(
-                self.handler,
+                Ipcon::to_handler(self.handler),
                 ptr as *const c_char,
                 buf.as_ptr(),
                 buf.len() as size_t,
@@ -284,7 +298,7 @@ impl Ipcon {
 
         unsafe {
             let ptr = g.into_raw();
-            let ret = ipcon_register_group(self.handler, ptr as *const c_char);
+            let ret = ipcon_register_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
                 return Err(errno_to_error(ret));
@@ -309,7 +323,7 @@ impl Ipcon {
 
         unsafe {
             let ptr = g.into_raw();
-            let ret = ipcon_unregister_group(self.handler, ptr as *const c_char);
+            let ret = ipcon_unregister_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
                 return Err(errno_to_error(ret));
@@ -347,7 +361,11 @@ impl Ipcon {
         unsafe {
             let ptr = p.into_raw();
             let pgtr = g.into_raw();
-            let ret = ipcon_join_group(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let ret = ipcon_join_group(
+                Ipcon::to_handler(self.handler),
+                ptr as *const c_char,
+                pgtr as *const c_char,
+            );
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
             if ret < 0 {
@@ -386,7 +404,11 @@ impl Ipcon {
         unsafe {
             let ptr = p.into_raw();
             let pgtr = g.into_raw();
-            let ret = ipcon_leave_group(self.handler, ptr as *const c_char, pgtr as *const c_char);
+            let ret = ipcon_leave_group(
+                Ipcon::to_handler(self.handler),
+                ptr as *const c_char,
+                pgtr as *const c_char,
+            );
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
 
@@ -430,7 +452,7 @@ impl Ipcon {
         unsafe {
             let pgtr = g.into_raw();
             let ret = ipcon_send_multicast(
-                self.handler,
+                Ipcon::to_handler(self.handler),
                 pgtr as *const c_char,
                 buf.as_ptr(),
                 buf.len() as size_t,
@@ -454,7 +476,7 @@ impl Ipcon {
         };
 
         unsafe {
-            let ret = ipcon_rcv_timeout(self.handler, &lmsg, &t);
+            let ret = ipcon_rcv_timeout(Ipcon::to_handler(self.handler), &lmsg, &t);
             if ret < 0 {
                 return Err(errno_to_error(ret));
             }
