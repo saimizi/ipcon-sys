@@ -22,5 +22,5 @@ tokio = { version = "1", features = ["full"], optional = true}
 
 
 [features]
-default = [ "async" ]
+default = []
 async = [ "futures" , "tokio"]
