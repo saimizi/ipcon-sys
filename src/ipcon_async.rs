@@ -20,10 +20,6 @@ impl AsyncIpcon {
         }
     }
 
-    pub fn free(self) {
-        self.ih.free();
-    }
-
     pub async fn is_peer_present(&self, peer: &str) -> bool {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 

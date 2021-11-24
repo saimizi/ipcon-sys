@@ -88,6 +88,14 @@ pub fn valid_name(name: &str) -> bool {
     true
 }
 
+impl Drop for Ipcon {
+    fn drop(&mut self) {
+        unsafe {
+            ipcon_free_handler(Ipcon::to_handler(self.handler));
+        }
+    }
+}
+
 impl Ipcon {
     pub fn to_handler(u: usize) -> *mut c_void {
         unsafe { std::mem::transmute::<usize, *mut c_void>(u) }
@@ -167,12 +175,6 @@ impl Ipcon {
             } else {
                 Some(fd)
             }
-        }
-    }
-
-    pub fn free(self) {
-        unsafe {
-            ipcon_free_handler(Ipcon::to_handler(self.handler));
         }
     }
 
