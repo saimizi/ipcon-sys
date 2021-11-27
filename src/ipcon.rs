@@ -59,8 +59,8 @@ pub const IPF_DISABLE_KEVENT_FILTER: IpconFlag = 0x1 << 0;
 pub const IPF_RCV_IF: IpconFlag = 0x1 << 1;
 pub const IPF_SND_IF: IpconFlag = 0x1 << 2;
 pub const IPF_DEFULT: IpconFlag = IPF_RCV_IF | IPF_SND_IF;
-pub const IPCON_KERNEL_NAME: &'static str = "ipcon";
-pub const IPCON_KERNEL_GROUP_NAME: &'static str = "ipcon_kevent";
+pub const IPCON_KERNEL_NAME: &str = "ipcon";
+pub const IPCON_KERNEL_GROUP_NAME: &str = "ipcon_kevent";
 
 fn errno_to_error(i: i32) -> Error {
     let eno = Errno::from_i32(i.abs());
@@ -101,13 +101,14 @@ impl Ipcon {
         unsafe { std::mem::transmute::<usize, *mut c_void>(u) }
     }
 
-    pub fn from_handler(h: *mut c_void) -> usize {
-        unsafe { std::mem::transmute::<*mut c_void, usize>(h) }
+    ///# Safety
+    pub unsafe fn from_handler(h: *mut c_void) -> usize {
+        h as usize
     }
 
     pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Option<Ipcon> {
         let handler: *mut c_void;
-        let mut flg = 0 as usize;
+        let mut flg = 0_usize;
 
         if let Some(a) = flag {
             flg = a as usize;
@@ -140,7 +141,7 @@ impl Ipcon {
             None
         } else {
             Some(Ipcon {
-                handler: Ipcon::from_handler(handler),
+                handler: unsafe { Ipcon::from_handler(handler) },
             })
         }
     }

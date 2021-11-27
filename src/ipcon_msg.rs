@@ -1,4 +1,3 @@
-use bytes::{Bytes, BytesMut};
 use std::ffi::CStr;
 use std::fmt;
 use std::io::{Error, ErrorKind, Result};
@@ -74,7 +73,7 @@ impl IpconKevent {
                     .unwrap_or("invalid");
                 format!("group {}@{} removed", group_name, peer_name)
             },
-            _ => format!("Invalid kevent type"),
+            _ => "Invalid kevent type".to_string(),
         }
     }
 
@@ -184,6 +183,13 @@ impl LibIpconMsg {
     }
 }
 
+impl Default for LibIpconMsg {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 #[derive(Clone, Copy, Debug)]
 pub enum IpconMsgType {
     IpconMsgTypeNormal,
@@ -196,7 +202,7 @@ pub struct IpconMsgBody {
     pub msg_type: IpconMsgType,
     pub peer: String,
     pub group: Option<String>,
-    pub buf: Bytes,
+    pub buf: Vec<u8>,
 }
 
 pub enum IpconMsg {
@@ -218,16 +224,18 @@ impl IpconMsg {
                     };
                 }
 
-                let buf: BytesMut;
+                let mut buf = Vec::<u8>::with_capacity(msg.len as usize);
+
                 unsafe {
-                    buf = BytesMut::from(&msg.u.buf[..msg.len as usize]);
+                    buf.set_len(msg.len as usize);
+                    buf.copy_from_slice(&msg.u.buf[..msg.len as usize]);
                 }
 
                 let m = IpconMsgBody {
                     msg_type: IpconMsgType::IpconMsgTypeNormal,
                     peer: peer_name,
                     group: None,
-                    buf: Bytes::from(buf),
+                    buf,
                 };
 
                 Ok(IpconMsg::IpconMsgUser(m))
@@ -249,22 +257,24 @@ impl IpconMsg {
                     };
                 }
 
-                let buf: BytesMut;
+                let mut  buf = Vec::<u8>::with_capacity(msg.len as usize);
+
                 unsafe {
-                    buf = BytesMut::from(&msg.u.buf[..msg.len as usize]);
+                    buf.set_len(msg.len as usize);
+                    buf.copy_from_slice(&msg.u.buf[..msg.len as usize]);
                 }
 
                 let m = IpconMsgBody {
                     msg_type: IpconMsgType::IpconMsgTypeGroup,
                     peer: peer_name,
                     group: Some(group_name),
-                    buf: Bytes::from(buf),
+                    buf,
                 };
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
             LIBIPCON_MSG_TYPE_KEVENT => unsafe {
-                Ok(IpconMsg::IpconMsgKevent(msg.u.kevent.clone()))
+                Ok(IpconMsg::IpconMsgKevent(msg.u.kevent))
             },
 
             LIBIPCON_MSG_TYPE_INVALID => Ok(IpconMsg::IpconMsgInvalid),
