@@ -12,6 +12,7 @@ pub const IPCON_KEVENT_TYPE_PEER_REMOVE: IpconKeventType = 1;
 pub const IPCON_KEVENT_TYPE_GROUP_ADD: IpconKeventType = 2;
 pub const IPCON_KEVENT_TYPE_GROUP_REMOVE: IpconKeventType = 3;
 
+/// Group information of IpconKevent.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct IpconKeventGroup {
@@ -19,6 +20,7 @@ pub struct IpconKeventGroup {
     pub peer_name: [std::os::raw::c_char; IPCON_MAX_NAME_LEN],
 }
 
+/// Peer information of IpconKevent.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct IpconKeventPeer {
@@ -32,6 +34,13 @@ pub union IpconKeventUnion {
     pub group: IpconKeventGroup,
 }
 
+/// IpconKevent is a group message deliveried from the IPCON_KERNEL_GROUP_NAME group of IPCON
+/// kernel module peer named IPCON_KERNEL_NAME. It deliveries the following messages to peer:
+/// * Peer added
+/// * Peer exited
+/// * Group of a peer added
+/// * Group of a peer removed
+///
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct IpconKevent {
@@ -40,6 +49,13 @@ pub struct IpconKevent {
 }
 
 impl IpconKevent {
+    /// Get a string of the events like following:
+    /// ```
+    /// "peer <peer name> added"
+    /// "peer <peer name> removed"
+    /// "group <group name>@<peer name> added"
+    /// "group <group name>@<peer name> removed"
+    /// ```
     pub fn get_string(&self) -> String {
         match self.ke_type {
             IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
@@ -77,6 +93,8 @@ impl IpconKevent {
         }
     }
 
+    /// Get the name of peer newly added.
+    /// IPCON kernel module will not delivery this event of an anonymous peer.
     pub fn peer_added(&self) -> Option<String> {
         match self.ke_type {
             IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
@@ -91,6 +109,8 @@ impl IpconKevent {
         }
     }
 
+    /// Get the name of peer removed.
+    /// IPCON kernel module will not delivery this event of an anonymous peer.
     pub fn peer_removed(&self) -> Option<String> {
         match self.ke_type {
             IPCON_KEVENT_TYPE_PEER_REMOVE => unsafe {
@@ -105,6 +125,9 @@ impl IpconKevent {
         }
     }
 
+    /// Get the newly added group information.
+    /// The first element of the tuple stores the name of peer who owns the group, and the second
+    /// element stores the group name.
     pub fn group_added(&self) -> Option<(String, String)> {
         match self.ke_type {
             IPCON_KEVENT_TYPE_GROUP_ADD => unsafe {
@@ -122,6 +145,9 @@ impl IpconKevent {
         }
     }
 
+    /// Get the newly removed group information.
+    /// The first element of the tuple stores the name of peer who owns the group, and the second
+    /// element stores the group name.
     pub fn group_removed(&self) -> Option<(String, String)> {
         match self.ke_type {
             IPCON_KEVENT_TYPE_GROUP_REMOVE => unsafe {
@@ -159,6 +185,7 @@ pub union IpconMsgUion {
     kevent: IpconKevent,
 }
 
+/// Message interface to libipcon.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct LibIpconMsg {
@@ -198,6 +225,20 @@ pub enum IpconMsgType {
     IpconMsgTypeInvalid,
 }
 
+/// The body of a IPCON message.
+///
+/// * msg_type  
+///   * IpconMsgTypeNormal : a normal message.
+///   * IpconMsgTypeGroup  : a multicast group message.
+///   * IpconMsgTypeKevent : a IPCON kernel module message
+///   * IpconMsgTypeInvalid: an invalid IPCON message
+/// * peer  
+///   The name of peer who sent this message.
+/// * group  
+///   The group of this message. It will be None if the message is not a multicast group message.
+/// * buf  
+///   Message content.
+///
 pub struct IpconMsgBody {
     pub msg_type: IpconMsgType,
     pub peer: String,
@@ -205,6 +246,7 @@ pub struct IpconMsgBody {
     pub buf: Vec<u8>,
 }
 
+/// IPCON message.
 pub enum IpconMsg {
     IpconMsgUser(IpconMsgBody),
     IpconMsgKevent(IpconKevent),

@@ -51,6 +51,7 @@ extern "C" {
     fn ipcon_get_ctrl_fd(handler: *mut c_void) -> i32;
 }
 
+/// IPCON peer.
 pub struct Ipcon {
     handler: usize,
 }
@@ -107,6 +108,21 @@ impl Ipcon {
         h as usize
     }
 
+    /// Create an IPEON peer.
+    /// If the name is ommited, an anonymous will be created.
+    /// Following flags can be specified with bitwise OR (|).
+    /// * IPF_DISABLE_KEVENT_FILTER  
+    ///   By default, IPCON kernel module will only delivery the add/remove notification of
+    ///   peers and groups which are considerred to be interested by the peer. If this flag is
+    ///   enabled, all notification will be deliveried by IPCON kernel module.
+    /// * IPF_SND_IF  
+    ///   Use message sending interface. 
+    /// * IPF_RCV_IF  
+    ///   Use message receiving interface.
+    /// * IPF_DEFULT  
+    ///   This is same to IPF_RCV_IF | IPF_SND_IF.
+    ///
+    ///   
     pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Option<Ipcon> {
         let handler: *mut c_void;
         let mut flg = 0_usize;
@@ -147,6 +163,7 @@ impl Ipcon {
         }
     }
 
+    /// Retrieve netlink socket file descriptor of message receiving interface.
     pub fn get_read_fd(&self) -> Option<i32> {
         unsafe {
             let fd = ipcon_get_read_fd(Ipcon::to_handler(self.handler));
@@ -158,6 +175,7 @@ impl Ipcon {
         }
     }
 
+    /// Retrieve netlink socket file descriptor of message sending interface.
     pub fn get_write_fd(&self) -> Option<i32> {
         unsafe {
             let fd = ipcon_get_write_fd(Ipcon::to_handler(self.handler));
@@ -169,6 +187,7 @@ impl Ipcon {
         }
     }
 
+    /// Retrieve netlink socket file descriptor of control interface.
     pub fn get_ctrl_fd(&self) -> Option<i32> {
         unsafe {
             let fd = ipcon_get_ctrl_fd(Ipcon::to_handler(self.handler));
@@ -180,6 +199,7 @@ impl Ipcon {
         }
     }
 
+    /// Inquiry whether a peer is present.
     pub fn is_peer_present(&self, peer: &str) -> bool {
         let mut present = false;
         let p = match CString::new(peer) {
@@ -200,6 +220,7 @@ impl Ipcon {
         present
     }
 
+    /// Inquiry whether the group of a peer is present.
     pub fn is_group_present(&self, peer: &str, group: &str) -> bool {
         let mut present = false;
         let p = match CString::new(peer) {
@@ -231,6 +252,8 @@ impl Ipcon {
         present
     }
 
+    /// Receive IPCON message.
+    /// This function will fail if the peer doesn't enable IPF_RCV_IF.
     pub fn receive_msg(&self) -> Result<IpconMsg> {
         let lmsg = LibIpconMsg::new();
 
@@ -244,10 +267,14 @@ impl Ipcon {
         IpconMsg::from_libipcon_msg(lmsg)
     }
 
+    /// Send an unicast IPCON message to a speicific peer.
+    /// This function will fail if the peer doesn't enable IPF_SND_IF.
     pub fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
         self.send_unicast_msg_by_ref(peer, &buf)
     }
 
+    /// Send an unicast IPCON message to a speicific peer.
+    /// This function will fail if the peer doesn't enable IPF_SND_IF.
     pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &Bytes) -> Result<()> {
         if !valid_name(peer) {
             return Err(Error::new(
@@ -287,6 +314,7 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Register a multicast group.
     pub fn register_group(&self, group: &str) -> Result<()> {
         if !valid_name(group) {
             return Err(Error::new(
@@ -312,6 +340,7 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Unregister a multicast group.
     pub fn unregister_group(&self, group: &str) -> Result<()> {
         if !valid_name(group) {
             return Err(Error::new(
@@ -337,6 +366,7 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Subscribe a multicast group of a peer.
     pub fn join_group(&self, peer: &str, group: &str) -> Result<()> {
         if !valid_name(peer) {
             return Err(Error::new(
@@ -380,6 +410,7 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Unsubscribe a multicast group of a peer.
     pub fn leave_group(&self, peer: &str, group: &str) -> Result<()> {
         if !valid_name(peer) {
             return Err(Error::new(
@@ -424,10 +455,12 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Send multicast messages to an owned group.
     pub fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
         self.send_multicast_by_ref(group, &buf, sync)
     }
 
+    /// Send multicast messages to an owned group.
     pub fn send_multicast_by_ref(&self, group: &str, buf: &Bytes, sync: bool) -> Result<()> {
         if !valid_name(group) {
             return Err(Error::new(
@@ -472,6 +505,9 @@ impl Ipcon {
         Ok(())
     }
 
+    /// Receiving message with timeout.
+    /// receive_msg() will block until a message come. receive_msg_timeout() adds a timeout to
+    /// it.The timeout is specified with seconds and microseconds.
     pub fn receive_msg_timeout(&self, tv_sec: u32, tv_usec: u32) -> Result<IpconMsg> {
         let lmsg = LibIpconMsg::new();
         let t = libc::timeval {
@@ -489,6 +525,8 @@ impl Ipcon {
         IpconMsg::from_libipcon_msg(lmsg)
     }
 
+    /// Receiving message without block.
+    /// This is same to receive_msg_timeout(0, 0);
     pub fn receive_msg_nonblock(&self) -> Result<IpconMsg> {
         self.receive_msg_timeout(0, 0)
     }
