@@ -1,5 +1,4 @@
 extern crate libc;
-use crate::error;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
 use bytes::Bytes;
 use libc::{c_void, size_t};
@@ -7,6 +6,8 @@ use nix::errno::Errno;
 use std::ffi::CString;
 use std::io::{Error, ErrorKind, Result};
 use std::os::raw::{c_char, c_uchar};
+#[allow(unused)]
+use jlogger::{jerror, jwarn, jinfo, jdebug};
 
 #[link(name = "ipcon")]
 extern "C" {
@@ -117,7 +118,7 @@ impl Ipcon {
         let pname = match peer_name {
             Some(a) => {
                 if !valid_name(a) {
-                    error!("Ipcon::new() : Invalid peer name.");
+                    jerror!("Ipcon::new() : Invalid peer name.");
                     return None;
                 }
 
