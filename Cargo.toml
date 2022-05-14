@@ -1,7 +1,7 @@
 [package]
 name = "ipcon-sys"
 description = "Rust binding for IPCON."
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Seimizu Joukan <joukan.seimizu@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/saimizi/ipcon-sys.git"
