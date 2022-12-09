@@ -1,0 +1,20 @@
+[package]
+name = "ipcon-sys-example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "ripcon_msg"
+path = "src/ripcon_msg.rs"
+
+[[bin]]
+name = "ripcon_server"
+path = "src/ripcon_server.rs"
+
+[dependencies]
+ipcon-sys = {path= "../"}
+error-stack = "0.2.4"
+jlogger = "0.1.6"
+log = "0.4.14"
+clap = { version = "4.0.29", features = ["derive"] }
