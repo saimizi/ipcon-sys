@@ -1,6 +1,5 @@
 extern crate libc;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
-use bytes::Bytes;
 #[allow(unused)]
 use jlogger::{jdebug, jerror, jinfo, jwarn};
 use libc::{c_void, size_t};
@@ -269,13 +268,13 @@ impl Ipcon {
 
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
-    pub fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
-        self.send_unicast_msg_by_ref(peer, &buf)
+    pub fn send_unicast_msg(&self, peer: &str, buf: &[u8]) -> Result<()> {
+        self.send_unicast_msg_by_ref(peer, buf)
     }
 
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
-    pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &Bytes) -> Result<()> {
+    pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &[u8]) -> Result<()> {
         if !valid_name(peer) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -456,12 +455,12 @@ impl Ipcon {
     }
 
     /// Send multicast messages to an owned group.
-    pub fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
-        self.send_multicast_by_ref(group, &buf, sync)
+    pub fn send_multicast(&self, group: &str, buf: &[u8], sync: bool) -> Result<()> {
+        self.send_multicast_by_ref(group, buf, sync)
     }
 
     /// Send multicast messages to an owned group.
-    pub fn send_multicast_by_ref(&self, group: &str, buf: &Bytes, sync: bool) -> Result<()> {
+    pub fn send_multicast_by_ref(&self, group: &str, buf: &[u8], sync: bool) -> Result<()> {
         if !valid_name(group) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,

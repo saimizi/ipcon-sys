@@ -16,7 +16,6 @@ path = "src/lib.rs"
 libc = "0.2.88"
 log = "0.4.14"
 jlogger = "0.1"
-bytes = "1.0.1"
 nix = "0.22.1"
 futures = { version= "0.3.17", features = ["thread-pool"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true}
