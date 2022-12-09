@@ -40,8 +40,8 @@ impl AsyncIpcon {
     pub async fn is_peer_present(&self, peer: &str) -> bool {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| Ok(self.ih.is_peer_present(peer))) {
                 Ok(Ok(ret)) => {
                     return ret;
@@ -58,8 +58,8 @@ impl AsyncIpcon {
     pub async fn is_group_present(&self, peer: &str, group: &str) -> bool {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| Ok(self.ih.is_group_present(peer, group))) {
                 Ok(Ok(ret)) => {
                     return ret;
@@ -77,8 +77,8 @@ impl AsyncIpcon {
     pub async fn receive_msg(&self) -> Result<IpconMsg> {
         let async_ctrl = AsyncFd::new(self.ih.get_read_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.readable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.readable().await.unwrap();
             match guide.try_io(|_inner| self.ih.receive_msg()) {
                 Ok(ret) => {
                     return ret;
@@ -93,8 +93,8 @@ impl AsyncIpcon {
     pub async fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_write_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.send_unicast_msg_by_ref(peer, &buf)) {
                 Ok(ret) => {
                     return ret;
@@ -108,8 +108,8 @@ impl AsyncIpcon {
     pub async fn register_group(&self, group: &str) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.register_group(group)) {
                 Ok(ret) => {
                     return ret;
@@ -123,8 +123,8 @@ impl AsyncIpcon {
     pub async fn unregister_group(&self, group: &str) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.unregister_group(group)) {
                 Ok(ret) => {
                     return ret;
@@ -138,8 +138,8 @@ impl AsyncIpcon {
     pub async fn join_group(&self, peer: &str, group: &str) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.join_group(peer, group)) {
                 Ok(ret) => {
                     return ret;
@@ -153,8 +153,8 @@ impl AsyncIpcon {
     pub async fn leave_group(&self, peer: &str, group: &str) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.leave_group(peer, group)) {
                 Ok(ret) => {
                     return ret;
@@ -168,8 +168,8 @@ impl AsyncIpcon {
     pub async fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_write_fd().unwrap()).unwrap();
 
-        let mut guide = async_ctrl.writable().await.unwrap();
         loop {
+            let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| self.ih.send_multicast_by_ref(group, &buf, sync)) {
                 Ok(ret) => {
                     return ret;
