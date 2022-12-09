@@ -1,13 +1,13 @@
 extern crate libc;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
 use bytes::Bytes;
+#[allow(unused)]
+use jlogger::{jdebug, jerror, jinfo, jwarn};
 use libc::{c_void, size_t};
 use nix::errno::Errno;
 use std::ffi::CString;
 use std::io::{Error, ErrorKind, Result};
 use std::os::raw::{c_char, c_uchar};
-#[allow(unused)]
-use jlogger::{jerror, jwarn, jinfo, jdebug};
 
 #[link(name = "ipcon")]
 extern "C" {
@@ -100,7 +100,7 @@ impl Drop for Ipcon {
 
 impl Ipcon {
     pub fn to_handler(u: usize) -> *mut c_void {
-        unsafe { std::mem::transmute::<usize, *mut c_void>(u) }
+        u as *mut c_void
     }
 
     ///# Safety
@@ -116,7 +116,7 @@ impl Ipcon {
     ///   peers and groups which are considered to be interested by the peer. If this flag is
     ///   enabled, all notification will be delivered by IPCON kernel module.
     /// * IPF_SND_IF  
-    ///   Use message sending interface. 
+    ///   Use message sending interface.
     /// * IPF_RCV_IF  
     ///   Use message receiving interface.
     /// * IPF_DEFAULT  

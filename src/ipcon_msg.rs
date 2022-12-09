@@ -216,7 +216,6 @@ impl Default for LibIpconMsg {
     }
 }
 
-
 #[derive(Clone, Copy, Debug)]
 pub enum IpconMsgType {
     IpconMsgTypeNormal,
@@ -266,18 +265,11 @@ impl IpconMsg {
                     };
                 }
 
-                let mut buf = Vec::<u8>::with_capacity(msg.len as usize);
-
-                unsafe {
-                    buf.set_len(msg.len as usize);
-                    buf.copy_from_slice(&msg.u.buf[..msg.len as usize]);
-                }
-
                 let m = IpconMsgBody {
                     msg_type: IpconMsgType::IpconMsgTypeNormal,
                     peer: peer_name,
                     group: None,
-                    buf,
+                    buf: unsafe { msg.u.buf[..msg.len as usize].to_vec() },
                 };
 
                 Ok(IpconMsg::IpconMsgUser(m))
@@ -299,25 +291,16 @@ impl IpconMsg {
                     };
                 }
 
-                let mut  buf = Vec::<u8>::with_capacity(msg.len as usize);
-
-                unsafe {
-                    buf.set_len(msg.len as usize);
-                    buf.copy_from_slice(&msg.u.buf[..msg.len as usize]);
-                }
-
                 let m = IpconMsgBody {
                     msg_type: IpconMsgType::IpconMsgTypeGroup,
                     peer: peer_name,
                     group: Some(group_name),
-                    buf,
+                    buf: unsafe { msg.u.buf[..msg.len as usize].to_vec() },
                 };
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            LIBIPCON_MSG_TYPE_KEVENT => unsafe {
-                Ok(IpconMsg::IpconMsgKevent(msg.u.kevent))
-            },
+            LIBIPCON_MSG_TYPE_KEVENT => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent)) },
 
             LIBIPCON_MSG_TYPE_INVALID => Ok(IpconMsg::IpconMsgInvalid),
             _ => Ok(IpconMsg::IpconMsgInvalid),
