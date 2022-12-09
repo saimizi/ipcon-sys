@@ -12,9 +12,26 @@ path = "src/ripcon_msg.rs"
 name = "ripcon_server"
 path = "src/ripcon_server.rs"
 
+[[bin]]
+name = "ripcon_server_async"
+path = "src/ripcon_server_async.rs"
+required-features=["async"]
+
+[[bin]]
+name = "ripcon_msg_async"
+path = "src/ripcon_msg_async.rs"
+required-features=["async"]
+
 [dependencies]
 ipcon-sys = {path= "../"}
 error-stack = "0.2.4"
 jlogger = "0.1.6"
 log = "0.4.14"
 clap = { version = "4.0.29", features = ["derive"] }
+tokio = { version = "1.23.0", features = ["full"], optional=true}
+
+[features]
+default=[]
+async=["tokio", "ipcon-sys/async"]
+
+

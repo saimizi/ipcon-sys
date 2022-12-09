@@ -18,7 +18,7 @@ struct Cli {
 
 #[allow(unused)]
 use jlogger::{jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder};
-const IPCON_SERVER: &'static str = "ipcon-str-server";
+const IPCON_SERVER: &str = "ipcon-str-server";
 
 fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()

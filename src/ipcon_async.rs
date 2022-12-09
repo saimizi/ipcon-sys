@@ -1,7 +1,7 @@
 use crate::ipcon::{Ipcon, IpconFlag};
+use crate::ipcon_error::IpconError;
 use crate::ipcon_msg::IpconMsg;
-use bytes::Bytes;
-use std::io::Result;
+use error_stack::{IntoReport, Result};
 use tokio::io::unix::AsyncFd;
 
 #[link(name = "ipcon")]
@@ -28,12 +28,9 @@ impl AsyncIpcon {
     ///   This is same to IPF_RCV_IF | IPF_SND_IF.
     ///
     ///   
-    pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Option<AsyncIpcon> {
-        if let Some(ih) = Ipcon::new(peer_name, flag) {
-            Some(AsyncIpcon { ih })
-        } else {
-            None
-        }
+    pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Result<AsyncIpcon, IpconError> {
+        let ih = Ipcon::new(peer_name, flag)?;
+        Ok(AsyncIpcon { ih })
     }
 
     /// Inquiry whether a peer is present.
@@ -74,14 +71,18 @@ impl AsyncIpcon {
 
     /// Receive IPCON message.
     /// This function will fail if the peer doesn't enable IPF_RCV_IF.
-    pub async fn receive_msg(&self) -> Result<IpconMsg> {
+    pub async fn receive_msg(&self) -> Result<IpconMsg, IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_read_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.readable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.receive_msg()) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .receive_msg()
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -90,14 +91,18 @@ impl AsyncIpcon {
 
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
-    pub async fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
+    pub async fn send_unicast_msg(&self, peer: &str, buf: &[u8]) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_write_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.send_unicast_msg_by_ref(peer, &buf)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .send_unicast_msg_by_ref(peer, &buf)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -105,14 +110,18 @@ impl AsyncIpcon {
     }
 
     /// Register a multicast group.
-    pub async fn register_group(&self, group: &str) -> Result<()> {
+    pub async fn register_group(&self, group: &str) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.register_group(group)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .register_group(group)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -120,14 +129,18 @@ impl AsyncIpcon {
     }
 
     /// Unregister a multicast group.
-    pub async fn unregister_group(&self, group: &str) -> Result<()> {
+    pub async fn unregister_group(&self, group: &str) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.unregister_group(group)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .unregister_group(group)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -135,14 +148,18 @@ impl AsyncIpcon {
     }
 
     /// Subscribe a multicast group of a peer.
-    pub async fn join_group(&self, peer: &str, group: &str) -> Result<()> {
+    pub async fn join_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.join_group(peer, group)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .join_group(peer, group)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -150,14 +167,18 @@ impl AsyncIpcon {
     }
 
     /// Unsubscribe a multicast group of a peer.
-    pub async fn leave_group(&self, peer: &str, group: &str) -> Result<()> {
+    pub async fn leave_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_ctrl_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.leave_group(peer, group)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .leave_group(peer, group)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -165,14 +186,23 @@ impl AsyncIpcon {
     }
 
     /// Send multicast messages to an owned group.
-    pub async fn send_multicast(&self, group: &str, buf: Bytes, sync: bool) -> Result<()> {
+    pub async fn send_multicast(
+        &self,
+        group: &str,
+        buf: &[u8],
+        sync: bool,
+    ) -> Result<(), IpconError> {
         let async_ctrl = AsyncFd::new(self.ih.get_write_fd().unwrap()).unwrap();
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| self.ih.send_multicast_by_ref(group, &buf, sync)) {
+            match guide.try_io(|_inner| {
+                self.ih
+                    .send_multicast_by_ref(group, &buf, sync)
+                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
+            }) {
                 Ok(ret) => {
-                    return ret;
+                    return ret.map_err(|e| IpconError::from(e)).into_report();
                 }
                 Err(_would_block) => {}
             }
@@ -182,13 +212,13 @@ impl AsyncIpcon {
     /// Receiving message with timeout.
     /// receive_msg() will block until a message come. receive_msg_timeout() adds a timeout to
     /// it.The timeout is specified with seconds and microseconds.
-    pub fn receive_msg_timeout(&self, tv_sec: u32, tv_usec: u32) -> Result<IpconMsg> {
+    pub fn receive_msg_timeout(&self, tv_sec: u32, tv_usec: u32) -> Result<IpconMsg, IpconError> {
         self.ih.receive_msg_timeout(tv_sec, tv_usec)
     }
 
     /// Receiving message without block.
     /// This is same to receive_msg_timeout(0, 0);
-    pub fn receive_msg_nonblock(&self) -> Result<IpconMsg> {
+    pub fn receive_msg_nonblock(&self) -> Result<IpconMsg, IpconError> {
         self.ih.receive_msg_nonblock()
     }
 }

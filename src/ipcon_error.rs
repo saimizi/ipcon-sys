@@ -39,4 +39,26 @@ impl From<Report<IpconError>> for IpconError {
     }
 }
 
+impl From<IpconError> for std::io::Error {
+    fn from(e: IpconError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+    }
+}
+
+impl From<std::io::Error> for IpconError {
+    fn from(e: std::io::Error) -> Self {
+        match e.to_string().as_str() {
+            "Invalid name" => IpconError::InvalidName,
+            "Invalid Kevent" => IpconError::InvalidKevent,
+            "Invalid data" => IpconError::InvalidData,
+            "Invalid libipcon message" => IpconError::InvalidLibIpconMsg,
+            "Timeout system error" => IpconError::SysErrorTimeOut,
+            "Invalid value system error" => IpconError::SysErrorInvalidValue,
+            "Permission denied system error" => IpconError::SysErrorPermission,
+            "Other system error" => IpconError::SystemErrorOther,
+            _ => IpconError::Unexpected,
+        }
+    }
+}
+
 impl Error for IpconError {}
