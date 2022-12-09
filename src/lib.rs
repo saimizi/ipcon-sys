@@ -15,3 +15,5 @@ pub mod ipcon;
 pub mod ipcon_async;
 
 pub mod ipcon_msg;
+
+pub mod ipcon_error;

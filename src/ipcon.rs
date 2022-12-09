@@ -1,11 +1,12 @@
 extern crate libc;
+use crate::ipcon_error::IpconError;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
+use error_stack::{IntoReport, Result, ResultExt};
 #[allow(unused)]
 use jlogger::{jdebug, jerror, jinfo, jwarn};
 use libc::{c_void, size_t};
 use nix::errno::Errno;
 use std::ffi::CString;
-use std::io::{Error, ErrorKind, Result};
 use std::os::raw::{c_char, c_uchar};
 
 #[link(name = "ipcon")]
@@ -63,30 +64,42 @@ pub const IPF_DEFAULT: IpconFlag = IPF_RCV_IF | IPF_SND_IF;
 pub const IPCON_KERNEL_NAME: &str = "ipcon";
 pub const IPCON_KERNEL_GROUP_NAME: &str = "ipcon_kevent";
 
-fn errno_to_error(i: i32) -> Error {
+fn errno_to_error(i: i32) -> IpconError {
     let eno = Errno::from_i32(i.abs());
     match eno {
-        Errno::ETIMEDOUT => Error::new(ErrorKind::TimedOut, eno.desc()),
-        Errno::EINVAL => Error::new(ErrorKind::InvalidInput, eno.desc()),
-        Errno::EPERM => Error::new(ErrorKind::PermissionDenied, eno.desc()),
-        _ => Error::new(ErrorKind::Other, eno.desc()),
+        Errno::ETIMEDOUT => IpconError::SysErrorTimeOut,
+        Errno::EINVAL => IpconError::SysErrorInvalidValue,
+        Errno::EPERM => IpconError::SysErrorPermission,
+        _ => IpconError::SystemErrorOther,
     }
 }
 
-pub fn valid_name(name: &str) -> bool {
+pub fn valid_name(name: &str) -> Result<(), IpconError> {
+    let mut error_str = None;
+
     if name.is_empty() {
-        return false;
+        error_str = Some("Name is null".to_owned());
     }
 
     if name.len() > IPCON_MAX_NAME_LEN {
-        return false;
+        error_str = Some(format!(
+            "Name is too long {} > {}",
+            name.len(),
+            IPCON_MAX_NAME_LEN
+        ));
     }
 
     if name.trim() != name {
-        return false;
+        error_str = Some("Name has blank character".to_owned());
     }
 
-    true
+    if let Some(err_str) = error_str {
+        Err(IpconError::InvalidName)
+            .into_report()
+            .attach_printable(err_str)
+    } else {
+        Ok(())
+    }
 }
 
 impl Drop for Ipcon {
@@ -122,7 +135,7 @@ impl Ipcon {
     ///   This is same to IPF_RCV_IF | IPF_SND_IF.
     ///
     ///   
-    pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Option<Ipcon> {
+    pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Result<Ipcon, IpconError> {
         let handler: *mut c_void;
         let mut flg = 0_usize;
 
@@ -132,15 +145,11 @@ impl Ipcon {
 
         let pname = match peer_name {
             Some(a) => {
-                if !valid_name(a) {
-                    jerror!("Ipcon::new() : Invalid peer name.");
-                    return None;
-                }
-
-                match CString::new(a) {
-                    Ok(a) => a.into_raw(),
-                    Err(_) => return None,
-                }
+                valid_name(a)?;
+                CString::new(a)
+                    .into_report()
+                    .change_context(IpconError::InvalidName)?
+                    .into_raw()
             }
             None => std::ptr::null(),
         };
@@ -154,46 +163,54 @@ impl Ipcon {
             }
         }
         if handler.is_null() {
-            None
+            Err(IpconError::SystemErrorOther)
+                .into_report()
+                .attach_printable("Failed to create ipcon handler")
         } else {
-            Some(Ipcon {
+            Ok(Ipcon {
                 handler: unsafe { Ipcon::from_handler(handler) },
             })
         }
     }
 
     /// Retrieve netlink socket file descriptor of message receiving interface.
-    pub fn get_read_fd(&self) -> Option<i32> {
+    pub fn get_read_fd(&self) -> Result<i32, IpconError> {
         unsafe {
             let fd = ipcon_get_read_fd(Ipcon::to_handler(self.handler));
-            if fd == -1 {
-                None
+            if fd < 0 {
+                Err(errno_to_error(fd))
+                    .into_report()
+                    .attach_printable(format!("ipcon_get_read_fd() error: {}", fd))
             } else {
-                Some(fd)
+                Ok(fd)
             }
         }
     }
 
     /// Retrieve netlink socket file descriptor of message sending interface.
-    pub fn get_write_fd(&self) -> Option<i32> {
+    pub fn get_write_fd(&self) -> Result<i32, IpconError> {
         unsafe {
             let fd = ipcon_get_write_fd(Ipcon::to_handler(self.handler));
-            if fd == -1 {
-                None
+            if fd < 0 {
+                Err(errno_to_error(fd))
+                    .into_report()
+                    .attach_printable(format!("ipcon_get_write_fd() error: {}", fd))
             } else {
-                Some(fd)
+                Ok(fd)
             }
         }
     }
 
     /// Retrieve netlink socket file descriptor of control interface.
-    pub fn get_ctrl_fd(&self) -> Option<i32> {
+    pub fn get_ctrl_fd(&self) -> Result<i32, IpconError> {
         unsafe {
             let fd = ipcon_get_ctrl_fd(Ipcon::to_handler(self.handler));
-            if fd == -1 {
-                None
+            if fd < 0 {
+                Err(errno_to_error(fd))
+                    .into_report()
+                    .attach_printable(format!("ipcon_get_write_fd() error: {}", fd))
             } else {
-                Some(fd)
+                Ok(fd)
             }
         }
     }
@@ -253,13 +270,15 @@ impl Ipcon {
 
     /// Receive IPCON message.
     /// This function will fail if the peer doesn't enable IPF_RCV_IF.
-    pub fn receive_msg(&self) -> Result<IpconMsg> {
+    pub fn receive_msg(&self) -> Result<IpconMsg, IpconError> {
         let lmsg = LibIpconMsg::new();
 
         unsafe {
             let ret = ipcon_rcv(Ipcon::to_handler(self.handler), &lmsg);
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_rcv() error: {}", ret));
             }
         }
 
@@ -268,31 +287,28 @@ impl Ipcon {
 
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
-    pub fn send_unicast_msg(&self, peer: &str, buf: &[u8]) -> Result<()> {
+    pub fn send_unicast_msg(&self, peer: &str, buf: &[u8]) -> Result<(), IpconError> {
         self.send_unicast_msg_by_ref(peer, buf)
     }
 
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
-    pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &[u8]) -> Result<()> {
-        if !valid_name(peer) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Name is too long > {}", IPCON_MAX_NAME_LEN),
-            ));
-        }
+    pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &[u8]) -> Result<(), IpconError> {
+        valid_name(peer)?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN),
-            ));
+            return Err(IpconError::InvalidData)
+                .into_report()
+                .attach_printable(format!(
+                    "Buffer length is to large {} > {}",
+                    buf.len(),
+                    IPCON_MAX_PAYLOAD_LEN
+                ));
         }
 
-        let pname = match CString::new(peer) {
-            Ok(s) => s,
-            Err(e) => return Err(Error::new(ErrorKind::InvalidData, e.to_string())),
-        };
+        let pname = CString::new(peer)
+            .into_report()
+            .change_context(IpconError::InvalidData)?;
 
         unsafe {
             let ptr = pname.into_raw();
@@ -306,7 +322,9 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_send_unicast() error: {}", ret));
             }
         }
 
@@ -314,25 +332,21 @@ impl Ipcon {
     }
 
     /// Register a multicast group.
-    pub fn register_group(&self, group: &str) -> Result<()> {
-        if !valid_name(group) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid group name".to_string(),
-            ));
-        }
+    pub fn register_group(&self, group: &str) -> Result<(), IpconError> {
+        valid_name(group).attach_printable("register_group error: invalid group name")?;
 
-        let g = match CString::new(group) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
+        let g = CString::new(group)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
         unsafe {
             let ptr = g.into_raw();
             let ret = ipcon_register_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_get_read_fd() error: {}", ret));
             }
         }
 
@@ -340,25 +354,21 @@ impl Ipcon {
     }
 
     /// Unregister a multicast group.
-    pub fn unregister_group(&self, group: &str) -> Result<()> {
-        if !valid_name(group) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid group name".to_string(),
-            ));
-        }
+    pub fn unregister_group(&self, group: &str) -> Result<(), IpconError> {
+        valid_name(group)?;
 
-        let g = match CString::new(group) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
+        let g = CString::new(group)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
         unsafe {
             let ptr = g.into_raw();
             let ret = ipcon_unregister_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_unregister_group() error: {}", ret));
             }
         }
 
@@ -366,30 +376,17 @@ impl Ipcon {
     }
 
     /// Subscribe a multicast group of a peer.
-    pub fn join_group(&self, peer: &str, group: &str) -> Result<()> {
-        if !valid_name(peer) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid peer name".to_string(),
-            ));
-        }
+    pub fn join_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
+        valid_name(peer)?;
+        valid_name(group)?;
 
-        if !valid_name(group) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid group name".to_string(),
-            ));
-        }
+        let p = CString::new(peer)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
-        let p = match CString::new(peer) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
-
-        let g = match CString::new(group) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
+        let g = CString::new(group)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
         unsafe {
             let ptr = p.into_raw();
@@ -402,7 +399,9 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_join_group() error: {}", ret));
             }
         }
 
@@ -410,30 +409,17 @@ impl Ipcon {
     }
 
     /// Unsubscribe a multicast group of a peer.
-    pub fn leave_group(&self, peer: &str, group: &str) -> Result<()> {
-        if !valid_name(peer) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid peer name".to_string(),
-            ));
-        }
+    pub fn leave_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
+        valid_name(peer)?;
+        valid_name(group)?;
 
-        if !valid_name(group) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid group name".to_string(),
-            ));
-        }
+        let p = CString::new(peer)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
-        let p = match CString::new(peer) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
-
-        let g = match CString::new(group) {
-            Ok(a) => a,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
+        let g = CString::new(group)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
         unsafe {
             let ptr = p.into_raw();
@@ -447,7 +433,9 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_leave_group() error: {}", ret));
             }
         }
 
@@ -455,30 +443,32 @@ impl Ipcon {
     }
 
     /// Send multicast messages to an owned group.
-    pub fn send_multicast(&self, group: &str, buf: &[u8], sync: bool) -> Result<()> {
+    pub fn send_multicast(&self, group: &str, buf: &[u8], sync: bool) -> Result<(), IpconError> {
         self.send_multicast_by_ref(group, buf, sync)
     }
 
     /// Send multicast messages to an owned group.
-    pub fn send_multicast_by_ref(&self, group: &str, buf: &[u8], sync: bool) -> Result<()> {
-        if !valid_name(group) {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Name is too long > {}", IPCON_MAX_NAME_LEN),
-            ));
-        }
+    pub fn send_multicast_by_ref(
+        &self,
+        group: &str,
+        buf: &[u8],
+        sync: bool,
+    ) -> Result<(), IpconError> {
+        valid_name(group)?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Data is too long > {}", IPCON_MAX_PAYLOAD_LEN),
-            ));
+            return Err(IpconError::InvalidData)
+                .into_report()
+                .attach_printable(format!(
+                    "Buffer length is too large {} > {}",
+                    buf.len(),
+                    IPCON_MAX_PAYLOAD_LEN,
+                ));
         }
 
-        let g = match CString::new(group) {
-            Ok(s) => s,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e.to_string())),
-        };
+        let g = CString::new(group)
+            .into_report()
+            .change_context(IpconError::InvalidName)?;
 
         let mut s: i32 = 0;
         if sync {
@@ -497,7 +487,9 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_send_multicast() error: {}", ret));
             }
         }
 
@@ -507,7 +499,7 @@ impl Ipcon {
     /// Receiving message with timeout.
     /// receive_msg() will block until a message come. receive_msg_timeout() adds a timeout to
     /// it.The timeout is specified with seconds and microseconds.
-    pub fn receive_msg_timeout(&self, tv_sec: u32, tv_usec: u32) -> Result<IpconMsg> {
+    pub fn receive_msg_timeout(&self, tv_sec: u32, tv_usec: u32) -> Result<IpconMsg, IpconError> {
         let lmsg = LibIpconMsg::new();
         let t = libc::timeval {
             tv_sec: tv_sec as libc::time_t,
@@ -517,7 +509,9 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv_timeout(Ipcon::to_handler(self.handler), &lmsg, &t);
             if ret < 0 {
-                return Err(errno_to_error(ret));
+                return Err(errno_to_error(ret))
+                    .into_report()
+                    .attach_printable(format!("ipcon_rcv_timeout() error: {}", ret));
             }
         }
 
@@ -526,7 +520,7 @@ impl Ipcon {
 
     /// Receiving message without block.
     /// This is same to receive_msg_timeout(0, 0);
-    pub fn receive_msg_nonblock(&self) -> Result<IpconMsg> {
+    pub fn receive_msg_nonblock(&self) -> Result<IpconMsg, IpconError> {
         self.receive_msg_timeout(0, 0)
     }
 }
