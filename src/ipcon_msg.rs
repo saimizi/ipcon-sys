@@ -34,7 +34,7 @@ pub union IpconKeventUnion {
     pub group: IpconKeventGroup,
 }
 
-/// IpconKevent is a group message deliveried from the IPCON_KERNEL_GROUP_NAME group of IPCON
+/// IpconKevent is a group message delivered from the IPCON_KERNEL_GROUP_NAME group of IPCON
 /// kernel module peer named IPCON_KERNEL_NAME. It deliveries the following messages to peer:
 /// * Peer added
 /// * Peer exited
@@ -180,7 +180,7 @@ pub const LIBIPCON_MSG_TYPE_INVALID: LibIpconMsgType = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union IpconMsgUion {
+pub union IpconMsgUnion {
     buf: [std::os::raw::c_uchar; IPCON_MAX_PAYLOAD_LEN],
     kevent: IpconKevent,
 }
@@ -193,7 +193,7 @@ pub struct LibIpconMsg {
     pub group: [c_char; IPCON_MAX_NAME_LEN],
     pub peer: [c_char; IPCON_MAX_NAME_LEN],
     len: u32,
-    u: IpconMsgUion,
+    u: IpconMsgUnion,
 }
 
 impl LibIpconMsg {
@@ -203,7 +203,7 @@ impl LibIpconMsg {
             peer: [0; IPCON_MAX_NAME_LEN],
             group: [0; IPCON_MAX_NAME_LEN],
             len: 0,
-            u: IpconMsgUion {
+            u: IpconMsgUnion {
                 buf: [0; IPCON_MAX_PAYLOAD_LEN],
             },
         }

@@ -1,6 +1,6 @@
 //! # ipcon-sys Module
 //! IPCON (IPC Over Netlink) is a packet type IPC mechanism by using Netlink. A simple (but a
-//! little old) explaination can be found at:
+//! little old) explanation can be found at:
 //!
 //! <https://github.com/saimizi/libipcon/blob/master/Document/Tutorial.txt>.
 //!

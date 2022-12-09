@@ -13,18 +13,18 @@ pub struct AsyncIpcon {
 }
 
 impl AsyncIpcon {
-    /// Create an async IPEON peer.
-    /// If the name is ommited, an anonymous will be created.
+    /// Create an async IPCON peer.
+    /// If the name is omitted, an anonymous will be created.
     /// Following flags can be specified with bitwise OR (|).
     /// * IPF_DISABLE_KEVENT_FILTER  
     ///   By default, IPCON kernel module will only delivery the add/remove notification of
-    ///   peers and groups which are considerred to be interested by the peer. If this flag is
-    ///   enabled, all notification will be deliveried by IPCON kernel module.
+    ///   peers and groups which are considered to be interested by the peer. If this flag is
+    ///   enabled, all notification will be delivered by IPCON kernel module.
     /// * IPF_SND_IF  
-    ///   Use message sending interface. 
+    ///   Use message sending interface.
     /// * IPF_RCV_IF  
     ///   Use message receiving interface.
-    /// * IPF_DEFULT  
+    /// * IPF_DEFAULT  
     ///   This is same to IPF_RCV_IF | IPF_SND_IF.
     ///
     ///   
@@ -88,7 +88,7 @@ impl AsyncIpcon {
         }
     }
 
-    /// Send an unicast IPCON message to a speicific peer.
+    /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
     pub async fn send_unicast_msg(&self, peer: &str, buf: Bytes) -> Result<()> {
         let async_ctrl = AsyncFd::new(self.ih.get_write_fd().unwrap()).unwrap();

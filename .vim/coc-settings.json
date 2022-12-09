@@ -1,0 +1,17 @@
+{
+  "cSpell.words": [
+    "nonblock",
+    "suseconds",
+    "usec",
+    "lmsg",
+    "pgtr",
+    "pname",
+    "EPERM",
+    "EINVAL",
+    "ETIMEDOUT",
+    "KEVENT",
+    "ulong",
+    "uchar"
+  ]
+}
+
