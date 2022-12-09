@@ -220,7 +220,7 @@ impl Default for LibIpconMsg {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IpconMsgType {
     IpconMsgTypeNormal,
     IpconMsgTypeGroup,

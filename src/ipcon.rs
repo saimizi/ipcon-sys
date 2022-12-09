@@ -145,7 +145,8 @@ impl Ipcon {
 
         let pname = match peer_name {
             Some(a) => {
-                valid_name(a)?;
+                valid_name(a).attach_printable(format!("Invalid peer name: {}", a))?;
+
                 CString::new(a)
                     .into_report()
                     .change_context(IpconError::InvalidName)?
@@ -294,7 +295,7 @@ impl Ipcon {
     /// Send an unicast IPCON message to a specific peer.
     /// This function will fail if the peer doesn't enable IPF_SND_IF.
     pub fn send_unicast_msg_by_ref(&self, peer: &str, buf: &[u8]) -> Result<(), IpconError> {
-        valid_name(peer)?;
+        valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
             return Err(IpconError::InvalidData)
@@ -355,7 +356,7 @@ impl Ipcon {
 
     /// Unregister a multicast group.
     pub fn unregister_group(&self, group: &str) -> Result<(), IpconError> {
-        valid_name(group)?;
+        valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
         let g = CString::new(group)
             .into_report()
@@ -377,8 +378,8 @@ impl Ipcon {
 
     /// Subscribe a multicast group of a peer.
     pub fn join_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
-        valid_name(peer)?;
-        valid_name(group)?;
+        valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
+        valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
         let p = CString::new(peer)
             .into_report()
@@ -410,8 +411,8 @@ impl Ipcon {
 
     /// Unsubscribe a multicast group of a peer.
     pub fn leave_group(&self, peer: &str, group: &str) -> Result<(), IpconError> {
-        valid_name(peer)?;
-        valid_name(group)?;
+        valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
+        valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
         let p = CString::new(peer)
             .into_report()
@@ -454,7 +455,7 @@ impl Ipcon {
         buf: &[u8],
         sync: bool,
     ) -> Result<(), IpconError> {
-        valid_name(group)?;
+        valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
             return Err(IpconError::InvalidData)

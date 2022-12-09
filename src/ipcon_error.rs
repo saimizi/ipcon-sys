@@ -1,6 +1,8 @@
 use std::{error::Error, fmt::Display};
 
-#[derive(Debug)]
+use error_stack::Report;
+
+#[derive(Debug, Clone, Copy)]
 pub enum IpconError {
     InvalidName,
     InvalidKevent,
@@ -28,6 +30,12 @@ impl Display for IpconError {
         };
 
         write!(f, "{}", err_str)
+    }
+}
+
+impl From<Report<IpconError>> for IpconError {
+    fn from(report: Report<IpconError>) -> Self {
+        report.downcast_ref::<IpconError>().unwrap().to_owned()
     }
 }
 
