@@ -13,12 +13,11 @@ use jlogger::{jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder};
 #[tokio::main]
 async fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()
-        .max_level(log::LevelFilter::Trace)
         .log_time(jlogger::LogTimeFormat::TimeStamp)
         .log_console(true)
         .build();
 
-    let ipcon = AsyncIpcon::new(Some("ipcon-str-server-async"), Some(ipcon::IPF_DEFAULT))
+    let ipcon = AsyncIpcon::new(Some("ipcon-str-server"), Some(ipcon::IPF_DEFAULT))
         .attach_printable("Failed to create Ipcon handler")?;
 
     log::info!("Start to waiting for message.");

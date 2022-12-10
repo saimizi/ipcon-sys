@@ -15,12 +15,11 @@ struct Cli {
 
 #[allow(unused)]
 use jlogger::{jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder};
-const IPCON_SERVER: &str = "ipcon-str-server-async";
+const IPCON_SERVER: &str = "ipcon-str-server";
 
 #[tokio::main]
 async fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()
-        .max_level(log::LevelFilter::Trace)
         .log_runtime(true)
         .log_time(jlogger::LogTimeFormat::TimeStamp)
         .log_console(true)
@@ -37,10 +36,17 @@ async fn main() -> Result<(), IpconError> {
                 .unwrap();
 
             jinfo!("send Msg");
-            ipcon
+
+            if let Err(e) = ipcon
                 .send_unicast_msg(IPCON_SERVER, msg.as_bytes())
                 .await
-                .unwrap();
+                .attach_printable(format!(
+                    "Failed to send message `{}` to `{}`",
+                    msg, IPCON_SERVER
+                ))
+            {
+                log::error!("{:?}", e);
+            }
         }));
     }
 

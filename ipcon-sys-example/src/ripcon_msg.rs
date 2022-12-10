@@ -22,7 +22,6 @@ const IPCON_SERVER: &str = "ipcon-str-server";
 
 fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()
-        .max_level(log::LevelFilter::Trace)
         .log_runtime(true)
         .log_time(jlogger::LogTimeFormat::TimeStamp)
         .log_console(true)
@@ -42,9 +41,12 @@ fn main() -> Result<(), IpconError> {
                         .unwrap();
 
                     jinfo!("send Msg");
-                    ipcon
+                    if let Err(e) = ipcon
                         .send_unicast_msg(IPCON_SERVER, msg.as_bytes())
-                        .unwrap();
+                        .attach_printable(format!("Failed to send `{}` to `{}`", msg, IPCON_SERVER))
+                    {
+                        jerror!("{:?}", e);
+                    }
                 })
                 .unwrap(),
         );
