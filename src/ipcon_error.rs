@@ -11,6 +11,7 @@ pub enum IpconError {
     SysErrorTimeOut,
     SysErrorInvalidValue,
     SysErrorPermission,
+    SystemErrorNotExist,
     SystemErrorOther,
     Unexpected,
 }
@@ -24,6 +25,7 @@ impl Display for IpconError {
             IpconError::InvalidLibIpconMsg => "Invalid libipcon message",
             IpconError::SysErrorTimeOut => "Timeout system error",
             IpconError::SysErrorInvalidValue => "Invalid value system error",
+            IpconError::SystemErrorNotExist => "Entry (peer/group) not exist",
             IpconError::SysErrorPermission => "Permission denied system error",
             IpconError::SystemErrorOther => "Other system error",
             _ => "Unexpected error",
@@ -54,6 +56,7 @@ impl From<std::io::Error> for IpconError {
             "Invalid libipcon message" => IpconError::InvalidLibIpconMsg,
             "Timeout system error" => IpconError::SysErrorTimeOut,
             "Invalid value system error" => IpconError::SysErrorInvalidValue,
+            "Entry (peer/group) not exist" => IpconError::SystemErrorNotExist,
             "Permission denied system error" => IpconError::SysErrorPermission,
             "Other system error" => IpconError::SystemErrorOther,
             _ => IpconError::Unexpected,

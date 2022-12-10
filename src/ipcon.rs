@@ -54,6 +54,7 @@ extern "C" {
 /// IPCON peer.
 pub struct Ipcon {
     handler: usize,
+    name: Option<String>,
 }
 
 pub type IpconFlag = std::os::raw::c_ulong;
@@ -70,6 +71,7 @@ fn errno_to_error(i: i32) -> IpconError {
         Errno::ETIMEDOUT => IpconError::SysErrorTimeOut,
         Errno::EINVAL => IpconError::SysErrorInvalidValue,
         Errno::EPERM => IpconError::SysErrorPermission,
+        Errno::ENOENT => IpconError::SystemErrorNotExist,
         _ => IpconError::SystemErrorOther,
     }
 }
@@ -138,6 +140,7 @@ impl Ipcon {
     pub fn new(peer_name: Option<&str>, flag: Option<IpconFlag>) -> Result<Ipcon, IpconError> {
         let handler: *mut c_void;
         let mut flg = 0_usize;
+        let mut name = None;
 
         if let Some(a) = flag {
             flg = a as usize;
@@ -146,7 +149,7 @@ impl Ipcon {
         let pname = match peer_name {
             Some(a) => {
                 valid_name(a).attach_printable(format!("Invalid peer name: {}", a))?;
-
+                name = Some(a.to_string());
                 CString::new(a)
                     .into_report()
                     .change_context(IpconError::InvalidName)?
@@ -166,10 +169,14 @@ impl Ipcon {
         if handler.is_null() {
             Err(IpconError::SystemErrorOther)
                 .into_report()
-                .attach_printable("Failed to create ipcon handler")
+                .attach_printable(format!(
+                    "Failed to create ipcon handler for {}, peer name already used?",
+                    name.as_deref().unwrap_or("Anon")
+                ))
         } else {
             Ok(Ipcon {
                 handler: unsafe { Ipcon::from_handler(handler) },
+                name,
             })
         }
     }
@@ -181,7 +188,11 @@ impl Ipcon {
             if fd < 0 {
                 Err(errno_to_error(fd))
                     .into_report()
-                    .attach_printable(format!("ipcon_get_read_fd() error: {}", fd))
+                    .attach_printable(format!(
+                        "ipcon_get_read_fd() {} get read fd failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        fd
+                    ))
             } else {
                 Ok(fd)
             }
@@ -195,7 +206,11 @@ impl Ipcon {
             if fd < 0 {
                 Err(errno_to_error(fd))
                     .into_report()
-                    .attach_printable(format!("ipcon_get_write_fd() error: {}", fd))
+                    .attach_printable(format!(
+                        "ipcon_get_write_fd() {} get write fd failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        fd
+                    ))
             } else {
                 Ok(fd)
             }
@@ -209,7 +224,11 @@ impl Ipcon {
             if fd < 0 {
                 Err(errno_to_error(fd))
                     .into_report()
-                    .attach_printable(format!("ipcon_get_write_fd() error: {}", fd))
+                    .attach_printable(format!(
+                        "ipcon_get_ctrl_fd() {} get ctrl fd failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        fd
+                    ))
             } else {
                 Ok(fd)
             }
@@ -279,7 +298,11 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_rcv() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_rcv() {} receive message failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        ret
+                    ));
             }
         }
 
@@ -325,7 +348,12 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_send_unicast() error: {}", ret));
+                    .attach_printable(format!(
+                        "send_unicast_msg() {} send message to peer `{}` failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        peer,
+                        ret
+                    ));
             }
         }
 
@@ -347,7 +375,12 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_get_read_fd() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_register_group() {} register `{}` failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        group,
+                        ret
+                    ));
             }
         }
 
@@ -369,7 +402,12 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_unregister_group() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_unregister_group() {} unregister `{}` failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        group,
+                        ret
+                    ));
             }
         }
 
@@ -402,7 +440,13 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_join_group() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_join_group() {} join `{}@{}` failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        group,
+                        peer,
+                        ret
+                    ));
             }
         }
 
@@ -436,7 +480,13 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_leave_group() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_leave_group() {} leave `{}@{}` failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        group,
+                        peer,
+                        ret
+                    ));
             }
         }
 
@@ -490,7 +540,12 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_send_multicast() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_send_multicast() to `{}@{}` failed: {}",
+                        group,
+                        self.name.as_deref().unwrap_or("Anon"),
+                        ret
+                    ));
             }
         }
 
@@ -512,7 +567,11 @@ impl Ipcon {
             if ret < 0 {
                 return Err(errno_to_error(ret))
                     .into_report()
-                    .attach_printable(format!("ipcon_rcv_timeout() error: {}", ret));
+                    .attach_printable(format!(
+                        "ipcon_rcv_timeout() {} receive message failed: {}",
+                        self.name.as_deref().unwrap_or("Anon"),
+                        ret
+                    ));
             }
         }
 

@@ -1,7 +1,7 @@
 use crate::ipcon::{Ipcon, IpconFlag};
 use crate::ipcon_error::IpconError;
 use crate::ipcon_msg::IpconMsg;
-use error_stack::{IntoReport, Result};
+use error_stack::{Context, IntoReport, Result, ResultExt};
 use tokio::io::unix::AsyncFd;
 
 #[link(name = "ipcon")]
@@ -40,11 +40,8 @@ impl AsyncIpcon {
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| Ok(self.ih.is_peer_present(peer))) {
-                Ok(Ok(ret)) => {
-                    return ret;
-                }
-                Ok(Err(e)) => {
-                    panic!("Unexpected error: {}", e);
+                Ok(ret) => {
+                    return ret.unwrap();
                 }
                 Err(_would_block) => {}
             }
@@ -58,12 +55,7 @@ impl AsyncIpcon {
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
             match guide.try_io(|_inner| Ok(self.ih.is_group_present(peer, group))) {
-                Ok(Ok(ret)) => {
-                    return ret;
-                }
-                Ok(Err(e)) => {
-                    panic!("Unexpected error: {}", e);
-                }
+                Ok(ret) => return ret.unwrap(),
                 Err(_would_block) => {}
             }
         }
@@ -76,14 +68,8 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.readable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .receive_msg()
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
-                Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
-                }
+            match guide.try_io(|_inner| Ok(self.ih.receive_msg())) {
+                Ok(ret) => return ret.unwrap().attach_printable("Async receive_msg() failed."),
                 Err(_would_block) => {}
             }
         }
@@ -96,13 +82,11 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .send_unicast_msg_by_ref(peer, &buf)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
+            match guide.try_io(|_inner| Ok(self.ih.send_unicast_msg_by_ref(peer, &buf))) {
                 Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
+                    return ret
+                        .unwrap()
+                        .attach_printable("Async send_unicast_msg() failed.")
                 }
                 Err(_would_block) => {}
             }
@@ -115,13 +99,11 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .register_group(group)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
+            match guide.try_io(|_inner| Ok(self.ih.register_group(group))) {
                 Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
+                    return ret
+                        .unwrap()
+                        .attach_printable("Async register_group() failed.")
                 }
                 Err(_would_block) => {}
             }
@@ -134,13 +116,11 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .unregister_group(group)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
+            match guide.try_io(|_inner| Ok(self.ih.unregister_group(group))) {
                 Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
+                    return ret
+                        .unwrap()
+                        .attach_printable("Async unregister_group() failed.")
                 }
                 Err(_would_block) => {}
             }
@@ -153,14 +133,8 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .join_group(peer, group)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
-                Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
-                }
+            match guide.try_io(|_inner| Ok(self.ih.join_group(peer, group))) {
+                Ok(ret) => return ret.unwrap().attach_printable("Async join_group() failed."),
                 Err(_would_block) => {}
             }
         }
@@ -172,14 +146,8 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .leave_group(peer, group)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
-                Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
-                }
+            match guide.try_io(|_inner| Ok(self.ih.leave_group(peer, group))) {
+                Ok(ret) => return ret.unwrap().attach_printable("Async leave_group() failed."),
                 Err(_would_block) => {}
             }
         }
@@ -196,13 +164,11 @@ impl AsyncIpcon {
 
         loop {
             let mut guide = async_ctrl.writable().await.unwrap();
-            match guide.try_io(|_inner| {
-                self.ih
-                    .send_multicast_by_ref(group, &buf, sync)
-                    .map_err(|e| std::io::Error::from(IpconError::from(e)))
-            }) {
+            match guide.try_io(|_inner| Ok(self.ih.send_multicast_by_ref(group, &buf, sync))) {
                 Ok(ret) => {
-                    return ret.map_err(|e| IpconError::from(e)).into_report();
+                    return ret
+                        .unwrap()
+                        .attach_printable("Async send_multicast() failed.")
                 }
                 Err(_would_block) => {}
             }
