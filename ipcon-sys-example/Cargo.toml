@@ -5,8 +5,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-name = "ripcon_msg"
-path = "src/ripcon_msg.rs"
+name = "ripcon_client"
+path = "src/ripcon_client.rs"
 
 [[bin]]
 name = "ripcon_server"
@@ -18,8 +18,8 @@ path = "src/ripcon_server_async.rs"
 required-features=["async"]
 
 [[bin]]
-name = "ripcon_msg_async"
-path = "src/ripcon_msg_async.rs"
+name = "ripcon_client_async"
+path = "src/ripcon_client_async.rs"
 required-features=["async"]
 
 [dependencies]
