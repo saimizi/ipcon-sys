@@ -256,8 +256,8 @@ pub enum IpconMsg {
     IpconMsgInvalid,
 }
 
-impl IpconMsg {
-    pub fn from_libipcon_msg(msg: LibIpconMsg) -> Result<IpconMsg, IpconError> {
+impl From<LibIpconMsg> for Result<IpconMsg, IpconError> {
+    fn from(msg: LibIpconMsg) -> Self {
         match msg.msg_type {
             LIBIPCON_MSG_TYPE_NORMAL => {
                 let m = IpconMsgBody {

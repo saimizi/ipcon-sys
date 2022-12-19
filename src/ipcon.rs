@@ -306,7 +306,7 @@ impl Ipcon {
             }
         }
 
-        IpconMsg::from_libipcon_msg(lmsg)
+        lmsg.into()
     }
 
     /// Send an unicast IPCON message to a specific peer.
@@ -575,7 +575,7 @@ impl Ipcon {
             }
         }
 
-        IpconMsg::from_libipcon_msg(lmsg)
+        lmsg.into()
     }
 
     /// Receiving message without block.
