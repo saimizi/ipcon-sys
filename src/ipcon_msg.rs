@@ -1,8 +1,12 @@
 use crate::ipcon_error::IpconError;
-use error_stack::{IntoReport, Result, ResultExt};
 use std::ffi::CStr;
 use std::fmt;
 use std::os::raw::c_char;
+#[allow(unused)]
+use {
+    error_stack::{Context, IntoReport, Result, ResultExt},
+    jlogger_tracing::{jdebug, jerror, jinfo, jtrace, jwarn},
+};
 
 pub const IPCON_MAX_PAYLOAD_LEN: usize = 2048;
 pub const IPCON_MAX_NAME_LEN: usize = 32;
@@ -37,20 +41,32 @@ pub union IpconKeventUnion {
 
 fn c_str_name(name: &[std::os::raw::c_char; IPCON_MAX_NAME_LEN]) -> Result<&str, IpconError> {
     #[cfg(target_arch = "x86_64")]
-    unsafe {
-        CStr::from_ptr(name as *const i8)
-            .to_str()
-            .into_report()
-            .change_context(IpconError::InvalidName)
+    let name: &[u8; IPCON_MAX_NAME_LEN] = unsafe { std::mem::transmute(name) };
+
+    let mut end = 0;
+    loop {
+        if name[end] == b'\0' {
+            break;
+        }
+
+        if end == IPCON_MAX_NAME_LEN - 1 {
+            break;
+        }
+
+        end += 1;
     }
 
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        CStr::from_ptr(name as *const u8)
-            .to_str()
-            .into_report()
-            .change_context(IpconError::InvalidName)
-    }
+    CStr::from_bytes_with_nul(&name[0..=end])
+        .into_report()
+        .change_context(IpconError::InvalidName)
+        .attach_printable(format!(
+            "Name: {:?}\n End: {}",
+            name.map(|c| c as char),
+            end
+        ))?
+        .to_str()
+        .into_report()
+        .change_context(IpconError::InvalidName)
 }
 
 /// IpconKevent is a group message delivered from the IPCON_KERNEL_GROUP_NAME group of IPCON
@@ -77,28 +93,26 @@ impl IpconKevent {
     /// ```
     pub fn get_string(&self) -> Result<String, IpconError> {
         let result = match self.ke_type {
-            IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
-                format!("peer {} added", c_str_name(&self.u.peer.peer_name)?)
-            },
+            IPCON_KEVENT_TYPE_PEER_ADD => format!(
+                "peer {} added",
+                c_str_name(unsafe { &self.u.peer.peer_name })?
+            ),
 
-            IPCON_KEVENT_TYPE_PEER_REMOVE => unsafe {
-                format!("peer {} removed", c_str_name(&self.u.peer.peer_name)?)
-            },
-            IPCON_KEVENT_TYPE_GROUP_ADD => unsafe {
-                format!(
-                    "group {}@{} added",
-                    c_str_name(&self.u.group.group_name)?,
-                    c_str_name(&self.u.group.peer_name)?
-                )
-            },
+            IPCON_KEVENT_TYPE_PEER_REMOVE => format!(
+                "peer {} removed",
+                c_str_name(unsafe { &self.u.peer.peer_name })?
+            ),
+            IPCON_KEVENT_TYPE_GROUP_ADD => format!(
+                "group {}@{} added",
+                c_str_name(unsafe { &self.u.group.group_name })?,
+                c_str_name(unsafe { &self.u.group.peer_name })?
+            ),
 
-            IPCON_KEVENT_TYPE_GROUP_REMOVE => unsafe {
-                format!(
-                    "group {}@{} removed",
-                    c_str_name(&self.u.group.group_name)?,
-                    c_str_name(&self.u.group.peer_name)?
-                )
-            },
+            IPCON_KEVENT_TYPE_GROUP_REMOVE => format!(
+                "group {}@{} removed",
+                c_str_name(unsafe { &self.u.group.group_name })?,
+                c_str_name(unsafe { &self.u.group.peer_name })?
+            ),
             _ => {
                 return Err(IpconError::InvalidKevent)
                     .into_report()
@@ -113,9 +127,8 @@ impl IpconKevent {
     /// IPCON kernel module will not delivery this event of an anonymous peer.
     pub fn peer_added(&self) -> Option<String> {
         match self.ke_type {
-            IPCON_KEVENT_TYPE_PEER_ADD => unsafe {
-                c_str_name(&self.u.peer.peer_name).map_or(None, |name| Some(name.to_owned()))
-            },
+            IPCON_KEVENT_TYPE_PEER_ADD => c_str_name(unsafe { &self.u.peer.peer_name })
+                .map_or(None, |name| Some(name.to_owned())),
             _ => None,
         }
     }
@@ -124,9 +137,8 @@ impl IpconKevent {
     /// IPCON kernel module will not delivery this event of an anonymous peer.
     pub fn peer_removed(&self) -> Option<String> {
         match self.ke_type {
-            IPCON_KEVENT_TYPE_PEER_REMOVE => unsafe {
-                c_str_name(&self.u.peer.peer_name).map_or(None, |name| Some(name.to_owned()))
-            },
+            IPCON_KEVENT_TYPE_PEER_REMOVE => c_str_name(unsafe { &self.u.peer.peer_name })
+                .map_or(None, |name| Some(name.to_owned())),
             _ => None,
         }
     }
@@ -136,16 +148,16 @@ impl IpconKevent {
     /// element stores the group name.
     pub fn group_added(&self) -> Option<(String, String)> {
         match self.ke_type {
-            IPCON_KEVENT_TYPE_GROUP_ADD => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_ADD => {
                 if let (Ok(peer_name), Ok(group_name)) = (
-                    c_str_name(&self.u.group.peer_name),
-                    c_str_name(&self.u.group.group_name),
+                    c_str_name(unsafe { &self.u.group.peer_name }),
+                    c_str_name(unsafe { &self.u.group.group_name }),
                 ) {
                     Some((peer_name.to_owned(), group_name.to_owned()))
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
@@ -155,16 +167,16 @@ impl IpconKevent {
     /// element stores the group name.
     pub fn group_removed(&self) -> Option<(String, String)> {
         match self.ke_type {
-            IPCON_KEVENT_TYPE_GROUP_REMOVE => unsafe {
+            IPCON_KEVENT_TYPE_GROUP_REMOVE => {
                 if let (Ok(peer_name), Ok(group_name)) = (
-                    c_str_name(&self.u.group.peer_name),
-                    c_str_name(&self.u.group.group_name),
+                    c_str_name(unsafe { &self.u.group.peer_name }),
+                    c_str_name(unsafe { &self.u.group.group_name }),
                 ) {
                     Some((peer_name.to_owned(), group_name.to_owned()))
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
@@ -280,7 +292,7 @@ impl From<LibIpconMsg> for Result<IpconMsg, IpconError> {
                 Ok(IpconMsg::IpconMsgUser(m))
             }
 
-            LIBIPCON_MSG_TYPE_KEVENT => unsafe { Ok(IpconMsg::IpconMsgKevent(msg.u.kevent)) },
+            LIBIPCON_MSG_TYPE_KEVENT => Ok(IpconMsg::IpconMsgKevent(unsafe { msg.u.kevent })),
             LIBIPCON_MSG_TYPE_INVALID => Ok(IpconMsg::IpconMsgInvalid),
             _ => Ok(IpconMsg::IpconMsgInvalid),
         }

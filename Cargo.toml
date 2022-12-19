@@ -14,12 +14,12 @@ path = "src/lib.rs"
 
 [dependencies]
 libc = "0.2.88"
-log = "0.4.14"
 nix = "0.22.1"
 futures = { version= "0.3.17", features = ["thread-pool"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true}
 error-stack = "0.2.4"
-jlogger = "0.1.6"
+jlogger-tracing = "0.1.4"
+tracing = "0.1.37"
 
 
 

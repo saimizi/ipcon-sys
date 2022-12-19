@@ -3,7 +3,7 @@ use crate::ipcon_error::IpconError;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
 use error_stack::{IntoReport, Result, ResultExt};
 #[allow(unused)]
-use jlogger::{jdebug, jerror, jinfo, jwarn};
+use jlogger_tracing::{jdebug, jerror, jinfo, jwarn};
 use libc::{c_void, size_t};
 use nix::errno::Errno;
 use std::ffi::CString;
