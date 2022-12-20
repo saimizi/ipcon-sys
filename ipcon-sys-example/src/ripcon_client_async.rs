@@ -14,14 +14,16 @@ struct Cli {
 }
 
 #[allow(unused)]
-use jlogger::{jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder};
+use jlogger_tracing::{
+    jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder, LevelFilter, LogTimeFormat,
+};
 const IPCON_SERVER: &str = "ipcon-str-server";
 
 #[tokio::main]
 async fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()
         .log_runtime(true)
-        .log_time(jlogger::LogTimeFormat::TimeStamp)
+        .log_time(LogTimeFormat::TimeStamp)
         .log_console(true)
         .build();
 
@@ -45,7 +47,7 @@ async fn main() -> Result<(), IpconError> {
                     msg, IPCON_SERVER
                 ))
             {
-                log::error!("{:?}", e);
+                jerror!("{:?}", e);
             }
         }));
     }

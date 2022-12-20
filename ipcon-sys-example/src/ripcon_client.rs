@@ -17,13 +17,15 @@ struct Cli {
 }
 
 #[allow(unused)]
-use jlogger::{jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder};
+use jlogger_tracing::{
+    jdebug, jerror, jinfo, jtrace, jwarn, JloggerBuilder, LevelFilter, LogTimeFormat,
+};
 const IPCON_SERVER: &str = "ipcon-str-server";
 
 fn main() -> Result<(), IpconError> {
     JloggerBuilder::new()
         .log_runtime(true)
-        .log_time(jlogger::LogTimeFormat::TimeStamp)
+        .log_time(LogTimeFormat::TimeStamp)
         .log_console(true)
         .build();
 
@@ -31,7 +33,7 @@ fn main() -> Result<(), IpconError> {
     let mut handlers = Vec::new();
 
     for i in 0..cli.count {
-        let msg = cli.msg.clone();
+        let msg = format!("{} from client-{}",cli.msg.clone(), i);
         handlers.push(
             std::thread::Builder::new()
                 .name(format!("Worker-{}", i + 1))
@@ -40,7 +42,7 @@ fn main() -> Result<(), IpconError> {
                         .attach_printable("Failed to create Ipcon handler")
                         .unwrap();
 
-                    jinfo!("send Msg");
+                    jinfo!("send msg : {}", msg);
                     if let Err(e) = ipcon
                         .send_unicast_msg(IPCON_SERVER, msg.as_bytes())
                         .attach_printable(format!("Failed to send `{}` to `{}`", msg, IPCON_SERVER))
