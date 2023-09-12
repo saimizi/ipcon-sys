@@ -1,7 +1,7 @@
 extern crate libc;
 use crate::ipcon_error::IpconError;
 use crate::ipcon_msg::{IpconMsg, LibIpconMsg, IPCON_MAX_NAME_LEN, IPCON_MAX_PAYLOAD_LEN};
-use error_stack::{IntoReport, Result, ResultExt};
+use error_stack::{Report, Result, ResultExt};
 #[allow(unused)]
 use jlogger_tracing::{jdebug, jerror, jinfo, jwarn};
 use libc::{c_void, size_t};
@@ -96,9 +96,7 @@ pub fn valid_name(name: &str) -> Result<(), IpconError> {
     }
 
     if let Some(err_str) = error_str {
-        Err(IpconError::InvalidName)
-            .into_report()
-            .attach_printable(err_str)
+        Err(Report::new(IpconError::InvalidName)).attach_printable(err_str)
     } else {
         Ok(())
     }
@@ -151,8 +149,7 @@ impl Ipcon {
                 valid_name(a).attach_printable(format!("Invalid peer name: {}", a))?;
                 name = Some(a.to_string());
                 CString::new(a)
-                    .into_report()
-                    .change_context(IpconError::InvalidName)?
+                    .map_err(|_| Report::new(IpconError::InvalidName))?
                     .into_raw()
             }
             None => std::ptr::null(),
@@ -167,12 +164,10 @@ impl Ipcon {
             }
         }
         if handler.is_null() {
-            Err(IpconError::SystemErrorOther)
-                .into_report()
-                .attach_printable(format!(
-                    "Failed to create ipcon handler for {}, peer name already used?",
-                    name.as_deref().unwrap_or("Anon")
-                ))
+            Err(Report::new(IpconError::SystemErrorOther)).attach_printable(format!(
+                "Failed to create ipcon handler for {}, peer name already used?",
+                name.as_deref().unwrap_or("Anon")
+            ))
         } else {
             Ok(Ipcon {
                 handler: unsafe { Ipcon::from_handler(handler) },
@@ -186,13 +181,11 @@ impl Ipcon {
         unsafe {
             let fd = ipcon_get_read_fd(Ipcon::to_handler(self.handler));
             if fd < 0 {
-                Err(errno_to_error(fd))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_get_read_fd() {} get read fd failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        fd
-                    ))
+                Err(Report::new(errno_to_error(fd))).attach_printable(format!(
+                    "ipcon_get_read_fd() {} get read fd failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    fd
+                ))
             } else {
                 Ok(fd)
             }
@@ -204,13 +197,11 @@ impl Ipcon {
         unsafe {
             let fd = ipcon_get_write_fd(Ipcon::to_handler(self.handler));
             if fd < 0 {
-                Err(errno_to_error(fd))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_get_write_fd() {} get write fd failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        fd
-                    ))
+                Err(Report::new(errno_to_error(fd))).attach_printable(format!(
+                    "ipcon_get_write_fd() {} get write fd failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    fd
+                ))
             } else {
                 Ok(fd)
             }
@@ -222,13 +213,11 @@ impl Ipcon {
         unsafe {
             let fd = ipcon_get_ctrl_fd(Ipcon::to_handler(self.handler));
             if fd < 0 {
-                Err(errno_to_error(fd))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_get_ctrl_fd() {} get ctrl fd failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        fd
-                    ))
+                Err(Report::new(errno_to_error(fd))).attach_printable(format!(
+                    "ipcon_get_ctrl_fd() {} get ctrl fd failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    fd
+                ))
             } else {
                 Ok(fd)
             }
@@ -296,13 +285,11 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv(Ipcon::to_handler(self.handler), &lmsg);
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_rcv() {} receive message failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_rcv() {} receive message failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    ret
+                ));
             }
         }
 
@@ -321,18 +308,14 @@ impl Ipcon {
         valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return Err(IpconError::InvalidData)
-                .into_report()
-                .attach_printable(format!(
-                    "Buffer length is to large {} > {}",
-                    buf.len(),
-                    IPCON_MAX_PAYLOAD_LEN
-                ));
+            return Err(Report::new(IpconError::InvalidData)).attach_printable(format!(
+                "Buffer length is to large {} > {}",
+                buf.len(),
+                IPCON_MAX_PAYLOAD_LEN
+            ));
         }
 
-        let pname = CString::new(peer)
-            .into_report()
-            .change_context(IpconError::InvalidData)?;
+        let pname = CString::new(peer).map_err(|_| Report::new(IpconError::InvalidData))?;
 
         unsafe {
             let ptr = pname.into_raw();
@@ -346,14 +329,12 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "send_unicast_msg() {} send message to peer `{}` failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        peer,
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "send_unicast_msg() {} send message to peer `{}` failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    peer,
+                    ret
+                ));
             }
         }
 
@@ -364,23 +345,19 @@ impl Ipcon {
     pub fn register_group(&self, group: &str) -> Result<(), IpconError> {
         valid_name(group).attach_printable("register_group error: invalid group name")?;
 
-        let g = CString::new(group)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
+        let g = CString::new(group).map_err(|_| Report::new(IpconError::InvalidName))?;
 
         unsafe {
             let ptr = g.into_raw();
             let ret = ipcon_register_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_register_group() {} register `{}` failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        group,
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_register_group() {} register `{}` failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    group,
+                    ret
+                ));
             }
         }
 
@@ -391,23 +368,19 @@ impl Ipcon {
     pub fn unregister_group(&self, group: &str) -> Result<(), IpconError> {
         valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
-        let g = CString::new(group)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
+        let g = CString::new(group).map_err(|_| Report::new(IpconError::InvalidName))?;
 
         unsafe {
             let ptr = g.into_raw();
             let ret = ipcon_unregister_group(Ipcon::to_handler(self.handler), ptr as *const c_char);
             let _ = CString::from_raw(ptr);
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_unregister_group() {} unregister `{}` failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        group,
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_unregister_group() {} unregister `{}` failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    group,
+                    ret
+                ));
             }
         }
 
@@ -419,13 +392,8 @@ impl Ipcon {
         valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
         valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
-        let p = CString::new(peer)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
-
-        let g = CString::new(group)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
+        let p = CString::new(peer).map_err(|_| Report::new(IpconError::InvalidName))?;
+        let g = CString::new(group).map_err(|_| Report::new(IpconError::InvalidName))?;
 
         unsafe {
             let ptr = p.into_raw();
@@ -438,15 +406,13 @@ impl Ipcon {
             let _ = CString::from_raw(ptr);
             let _ = CString::from_raw(pgtr);
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_join_group() {} join `{}@{}` failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        group,
-                        peer,
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_join_group() {} join `{}@{}` failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    group,
+                    peer,
+                    ret
+                ));
             }
         }
 
@@ -458,13 +424,8 @@ impl Ipcon {
         valid_name(peer).attach_printable(format!("Invalid peer name: {}", peer))?;
         valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
-        let p = CString::new(peer)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
-
-        let g = CString::new(group)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
+        let p = CString::new(peer).map_err(|_| Report::new(IpconError::InvalidName))?;
+        let g = CString::new(group).map_err(|_| Report::new(IpconError::InvalidName))?;
 
         unsafe {
             let ptr = p.into_raw();
@@ -478,15 +439,13 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_leave_group() {} leave `{}@{}` failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        group,
-                        peer,
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_leave_group() {} leave `{}@{}` failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    group,
+                    peer,
+                    ret
+                ));
             }
         }
 
@@ -508,18 +467,14 @@ impl Ipcon {
         valid_name(group).attach_printable(format!("Invalid group name: {}", group))?;
 
         if buf.len() > IPCON_MAX_PAYLOAD_LEN {
-            return Err(IpconError::InvalidData)
-                .into_report()
-                .attach_printable(format!(
-                    "Buffer length is too large {} > {}",
-                    buf.len(),
-                    IPCON_MAX_PAYLOAD_LEN,
-                ));
+            return Err(Report::new(IpconError::InvalidData)).attach_printable(format!(
+                "Buffer length is too large {} > {}",
+                buf.len(),
+                IPCON_MAX_PAYLOAD_LEN,
+            ));
         }
 
-        let g = CString::new(group)
-            .into_report()
-            .change_context(IpconError::InvalidName)?;
+        let g = CString::new(group).map_err(|_| Report::new(IpconError::InvalidName))?;
 
         let mut s: i32 = 0;
         if sync {
@@ -538,14 +493,12 @@ impl Ipcon {
             let _ = CString::from_raw(pgtr);
 
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_send_multicast() to `{}@{}` failed: {}",
-                        group,
-                        self.name.as_deref().unwrap_or("Anon"),
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_send_multicast() to `{}@{}` failed: {}",
+                    group,
+                    self.name.as_deref().unwrap_or("Anon"),
+                    ret
+                ));
             }
         }
 
@@ -565,13 +518,11 @@ impl Ipcon {
         unsafe {
             let ret = ipcon_rcv_timeout(Ipcon::to_handler(self.handler), &lmsg, &t);
             if ret < 0 {
-                return Err(errno_to_error(ret))
-                    .into_report()
-                    .attach_printable(format!(
-                        "ipcon_rcv_timeout() {} receive message failed: {}",
-                        self.name.as_deref().unwrap_or("Anon"),
-                        ret
-                    ));
+                return Err(Report::new(errno_to_error(ret))).attach_printable(format!(
+                    "ipcon_rcv_timeout() {} receive message failed: {}",
+                    self.name.as_deref().unwrap_or("Anon"),
+                    ret
+                ));
             }
         }
 

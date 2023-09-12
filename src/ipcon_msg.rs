@@ -4,7 +4,7 @@ use std::fmt;
 use std::os::raw::c_char;
 #[allow(unused)]
 use {
-    error_stack::{Context, IntoReport, Result, ResultExt},
+    error_stack::{Context, Report, Result, ResultExt},
     jlogger_tracing::{jdebug, jerror, jinfo, jtrace, jwarn},
 };
 
@@ -57,16 +57,14 @@ fn c_str_name(name: &[std::os::raw::c_char; IPCON_MAX_NAME_LEN]) -> Result<&str,
     }
 
     CStr::from_bytes_with_nul(&name[0..=end])
-        .into_report()
-        .change_context(IpconError::InvalidName)
+        .map_err(|_| Report::new(IpconError::InvalidName))
         .attach_printable(format!(
             "Name: {:?}\n End: {}",
             name.map(|c| c as char),
             end
         ))?
         .to_str()
-        .into_report()
-        .change_context(IpconError::InvalidName)
+        .map_err(|_| Report::new(IpconError::InvalidName))
 }
 
 /// IpconKevent is a group message delivered from the IPCON_KERNEL_GROUP_NAME group of IPCON
@@ -114,8 +112,7 @@ impl IpconKevent {
                 c_str_name(unsafe { &self.u.group.peer_name })?
             ),
             _ => {
-                return Err(IpconError::InvalidKevent)
-                    .into_report()
+                return Err(Report::new(IpconError::InvalidKevent))
                     .attach_printable(format!("Invalid kevent type {}", self.ke_type))
             }
         };

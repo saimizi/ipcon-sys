@@ -17,7 +17,7 @@ libc = "0.2.88"
 nix = "0.22.1"
 futures = { version= "0.3.17", features = ["thread-pool"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true}
-error-stack = "0.3.1"
+error-stack = "0.4"
 jlogger-tracing = "0.1.4"
 tracing = "0.1.37"
 
